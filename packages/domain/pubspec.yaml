@@ -1,0 +1,16 @@
+name: domain
+description: Pure-Dart domain layer — entities, use cases, repository interfaces.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+
+dependencies:
+  equatable: ^2.0.5
+  uuid: ^4.0.0
+
+dev_dependencies:
+  mocktail: ^1.0.0
+  test: ^1.24.0
+  very_good_analysis: ^5.1.0

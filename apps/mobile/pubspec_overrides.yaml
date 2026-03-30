@@ -1,0 +1,12 @@
+# melos_managed_dependency_overrides: data,domain,geofencing,notifications,ui_kit
+dependency_overrides:
+  data:
+    path: ../../packages/data
+  domain:
+    path: ../../packages/domain
+  geofencing:
+    path: ../../packages/geofencing
+  notifications:
+    path: ../../packages/notifications
+  ui_kit:
+    path: ../../packages/ui_kit

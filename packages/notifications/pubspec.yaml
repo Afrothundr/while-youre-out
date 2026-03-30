@@ -1,0 +1,20 @@
+name: notifications
+description: Local notification service using flutter_local_notifications.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.16.0"
+
+dependencies:
+  domain:
+    path: ../domain
+  flutter:
+    sdk: flutter
+  flutter_local_notifications: ^17.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^5.1.0
