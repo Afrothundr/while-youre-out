@@ -23,7 +23,7 @@ void main() {
     });
 
     testWidgets('tap toggles from unchecked to checked', (tester) async {
-      bool currentValue = false;
+      var currentValue = false;
 
       await tester.pumpWidget(
         StatefulBuilder(
@@ -48,7 +48,7 @@ void main() {
     });
 
     testWidgets('tap toggles from checked to unchecked', (tester) async {
-      bool currentValue = true;
+      var currentValue = true;
 
       await tester.pumpWidget(
         StatefulBuilder(
@@ -73,7 +73,7 @@ void main() {
     });
 
     testWidgets('tapping InkWell also toggles checkbox', (tester) async {
-      bool currentValue = false;
+      var currentValue = false;
 
       await tester.pumpWidget(
         StatefulBuilder(
@@ -110,7 +110,10 @@ void main() {
         ),
       );
 
-      expect(find.byType(GestureDetector), findsNWidgets(AppColors.listColors.length));
+      expect(
+        find.byType(GestureDetector),
+        findsNWidgets(AppColors.listColors.length),
+      );
     });
 
     testWidgets('fires onColorChanged callback when a circle is tapped',
@@ -131,7 +134,9 @@ void main() {
         ),
       );
 
-      final circles = tester.widgetList<GestureDetector>(find.byType(GestureDetector)).toList();
+      final circles = tester
+          .widgetList<GestureDetector>(find.byType(GestureDetector))
+          .toList();
       await tester.tap(find.byWidget(circles[targetIndex]));
       await tester.pump();
 
@@ -170,7 +175,9 @@ void main() {
       );
 
       for (var i = 0; i < AppColors.listColors.length; i++) {
-        final circles = tester.widgetList<GestureDetector>(find.byType(GestureDetector)).toList();
+        final circles = tester
+            .widgetList<GestureDetector>(find.byType(GestureDetector))
+            .toList();
         await tester.tap(find.byWidget(circles[i]));
         await tester.pump();
       }
@@ -198,8 +205,10 @@ void main() {
       expect(slider.max, equals(RadiusSlider.maxRadius));
     });
 
-    testWidgets('emits value within allowed range when dragged', (tester) async {
-      double emittedValue = 500;
+    testWidgets(
+      'emits value within allowed range when dragged',
+      (tester) async {
+      var emittedValue = 500.0;
 
       await tester.pumpWidget(
         StatefulBuilder(
@@ -277,7 +286,7 @@ void main() {
             body: AppListTile(
               title: 'Groceries',
               color: AppColors.listColors[0],
-              incompleteCount: 0,
+
             ),
           ),
         ),

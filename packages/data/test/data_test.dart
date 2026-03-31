@@ -82,7 +82,7 @@ void main() {
 
     test('getAllLists returns lists ordered by sortOrder ascending', () async {
       final listA = _makeList(id: 'a', title: 'A', sortOrder: 2);
-      final listB = _makeList(id: 'b', title: 'B', sortOrder: 0);
+      final listB = _makeList(id: 'b', title: 'B');
       final listC = _makeList(id: 'c', title: 'C', sortOrder: 1);
       await repo.saveList(listA);
       await repo.saveList(listB);
@@ -193,9 +193,9 @@ void main() {
     });
 
     test('getItemsForList orders by priority desc then isDone asc', () async {
-      final high = _makeItem(id: 'h', priority: 3, isDone: false);
-      final low = _makeItem(id: 'l', priority: 0, isDone: false);
-      final mid = _makeItem(id: 'm', priority: 1, isDone: false);
+      final high = _makeItem(id: 'h', priority: 3);
+      final low = _makeItem(id: 'l');
+      final mid = _makeItem(id: 'm', priority: 1);
       await itemRepo.saveItem(low);
       await itemRepo.saveItem(mid);
       await itemRepo.saveItem(high);
@@ -242,8 +242,8 @@ void main() {
     });
 
     test('countIncompleteItems returns correct undone count', () async {
-      await itemRepo.saveItem(_makeItem(id: 'i1', isDone: false));
-      await itemRepo.saveItem(_makeItem(id: 'i2', isDone: false));
+      await itemRepo.saveItem(_makeItem(id: 'i1'));
+      await itemRepo.saveItem(_makeItem(id: 'i2'));
       await itemRepo.saveItem(_makeItem(id: 'i3', isDone: true));
 
       final count = await itemRepo.countIncompleteItems('list-1');
@@ -304,7 +304,7 @@ void main() {
     });
 
     test('getAllActiveGeofences returns only active regions', () async {
-      final active = _makeRegion(id: 'active', isActive: true);
+      final active = _makeRegion(id: 'active');
       final inactive = _makeRegion(id: 'inactive', isActive: false);
       await repo.saveGeofence(active);
       await repo.saveGeofence(inactive);
@@ -316,7 +316,7 @@ void main() {
     });
 
     test('saveGeofence acts as upsert — updating an existing region', () async {
-      final original = _makeRegion(isActive: true);
+      final original = _makeRegion();
       await repo.saveGeofence(original);
 
       final updated = original.copyWith(label: 'New Label');
@@ -336,7 +336,7 @@ void main() {
 
     test('setGeofenceActive(false) excludes region from getAllActiveGeofences',
         () async {
-      await repo.saveGeofence(_makeRegion(isActive: true));
+      await repo.saveGeofence(_makeRegion());
 
       await repo.setGeofenceActive('geo-1', active: false);
 
@@ -370,12 +370,18 @@ void main() {
       await repo.saveGeofence(exit);
       await repo.saveGeofence(both);
 
-      expect((await repo.getGeofenceById('enter'))?.trigger,
-          GeofenceTrigger.enter);
       expect(
-          (await repo.getGeofenceById('exit'))?.trigger, GeofenceTrigger.exit);
-      expect((await repo.getGeofenceById('both'))?.trigger,
-          GeofenceTrigger.enterAndExit);
+        (await repo.getGeofenceById('enter'))?.trigger,
+        GeofenceTrigger.enter,
+      );
+      expect(
+        (await repo.getGeofenceById('exit'))?.trigger,
+        GeofenceTrigger.exit,
+      );
+      expect(
+        (await repo.getGeofenceById('both'))?.trigger,
+        GeofenceTrigger.enterAndExit,
+      );
     });
   });
 }
