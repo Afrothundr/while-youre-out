@@ -1,3 +1,11 @@
+# IDE files
+.idea/
+*.iml
+melos_*.iml
+
+# Melos local overrides
+pubspec_overrides.yaml
+
 # Miscellaneous
 *.class
 *.lock

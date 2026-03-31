@@ -23,39 +23,41 @@ scripts:
   # ── Analysis ────────────────────────────────────────────────────────────────
 
   analyze:
-    run: melos exec -- flutter analyze --fatal-infos
+    exec: flutter analyze --fatal-infos
     description: Run flutter analyze across all packages.
 
   format:
-    run: melos exec -- dart format . --set-exit-if-changed
+    exec: dart format . --set-exit-if-changed
     description: Check formatting across all packages.
 
   format:fix:
-    run: melos exec -- dart format .
+    exec: dart format .
     description: Auto-fix formatting across all packages.
 
   # ── Testing ─────────────────────────────────────────────────────────────────
 
   test:
-    run: melos exec --fail-fast -- flutter test --coverage
+    run: flutter test --coverage
+    exec:
+      failFast: true
     description: Run all unit and widget tests across all packages.
     packageFilters:
       dirExists: test
 
   test:domain:
-    run: melos exec -- flutter test --coverage
+    exec: flutter test --coverage
     description: Run tests for the domain package only.
     packageFilters:
       scope: "domain"
 
   test:data:
-    run: melos exec -- flutter test --coverage
+    exec: flutter test --coverage
     description: Run tests for the data package only.
     packageFilters:
       scope: "data"
 
   test:geofencing:
-    run: melos exec -- flutter test --coverage
+    exec: flutter test --coverage
     description: Run tests for the geofencing package only.
     packageFilters:
       scope: "geofencing"
@@ -88,13 +90,13 @@ scripts:
   # ── Code generation ─────────────────────────────────────────────────────────
 
   gen:
-    run: melos exec -- dart run build_runner build --delete-conflicting-outputs
+    exec: dart run build_runner build --delete-conflicting-outputs
     description: Run build_runner code generation across all packages.
     packageFilters:
       dependsOn: "build_runner"
 
   gen:watch:
-    run: melos exec -- dart run build_runner watch --delete-conflicting-outputs
+    exec: dart run build_runner watch --delete-conflicting-outputs
     description: Watch and regenerate code across all packages.
     packageFilters:
       dependsOn: "build_runner"
@@ -102,13 +104,13 @@ scripts:
   # ── Utilities ────────────────────────────────────────────────────────────────
 
   clean:
-    run: melos exec -- flutter clean
+    exec: flutter clean
     description: flutter clean across all packages.
 
   outdated:
-    run: melos exec -- flutter pub outdated
+    exec: flutter pub outdated
     description: Check for outdated dependencies.
 
   upgrade:
-    run: melos exec -- flutter pub upgrade
+    exec: flutter pub upgrade
     description: Upgrade all dependencies.
