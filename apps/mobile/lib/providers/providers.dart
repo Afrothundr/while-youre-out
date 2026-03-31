@@ -1,6 +1,7 @@
 import 'package:data/data.dart';
 import 'package:domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geofencing/geofencing.dart';
 
 // ---------------------------------------------------------------------------
 // Database
@@ -33,12 +34,15 @@ final geofenceRepositoryProvider = Provider<GeofenceRepository>((ref) {
 });
 
 // ---------------------------------------------------------------------------
-// No-op GeofenceService for Phase 1 (no background events)
+// GeofenceService — Phase 2: StubGeofenceService
 // ---------------------------------------------------------------------------
 
-/// Provides the [GeofenceService] (no-op stub for Phase 1).
+/// Provides the [GeofenceService] implementation.
+///
+/// Phase 2 uses [StubGeofenceService] which logs to the console instead of
+/// making real OS calls. Replace with the platform bridge in Phase 3.
 final geofenceServiceProvider = Provider<GeofenceService>((ref) {
-  return _NoOpGeofenceService();
+  return StubGeofenceService();
 });
 
 // ---------------------------------------------------------------------------
@@ -80,6 +84,32 @@ final deleteItemUseCaseProvider = Provider<DeleteItemUseCase>((ref) {
   return DeleteItemUseCase(ref.watch(todoItemRepositoryProvider));
 });
 
+/// Provides the [AssignLocationUseCase].
+final assignLocationUseCaseProvider = Provider<AssignLocationUseCase>((ref) {
+  return AssignLocationUseCase(
+    ref.watch(todoListRepositoryProvider),
+    ref.watch(geofenceRepositoryProvider),
+  );
+});
+
+/// Provides the [RegisterGeofenceUseCase].
+final registerGeofenceUseCaseProvider =
+    Provider<RegisterGeofenceUseCase>((ref) {
+  return RegisterGeofenceUseCase(
+    ref.watch(geofenceRepositoryProvider),
+    ref.watch(geofenceServiceProvider),
+  );
+});
+
+/// Provides the [UnregisterGeofenceUseCase].
+final unregisterGeofenceUseCaseProvider =
+    Provider<UnregisterGeofenceUseCase>((ref) {
+  return UnregisterGeofenceUseCase(
+    ref.watch(geofenceRepositoryProvider),
+    ref.watch(geofenceServiceProvider),
+  );
+});
+
 // ---------------------------------------------------------------------------
 // Reactive streams
 // ---------------------------------------------------------------------------
@@ -108,21 +138,3 @@ final listByIdProvider =
         (lists) => lists.where((l) => l.id == listId).firstOrNull,
       );
 });
-
-// ---------------------------------------------------------------------------
-// Private: no-op GeofenceService stub (Phase 1)
-// ---------------------------------------------------------------------------
-
-class _NoOpGeofenceService implements GeofenceService {
-  @override
-  Future<void> registerRegion(GeofenceRegion region) async {}
-
-  @override
-  Future<void> unregisterRegion(String regionId) async {}
-
-  @override
-  Future<void> unregisterAll() async {}
-
-  @override
-  Stream<GeofenceEvent> get events => const Stream.empty();
-}

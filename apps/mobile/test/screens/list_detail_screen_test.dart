@@ -4,6 +4,7 @@ import 'package:domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:whileyoureout/providers/providers.dart';
@@ -105,8 +106,24 @@ Widget _buildHarness({
       createItemUseCaseProvider.overrideWithValue(mockCreate),
       deleteItemUseCaseProvider.overrideWithValue(mockDelete),
     ],
-    child: MaterialApp(
-      home: ListDetailScreen(listId: listId),
+    child: MaterialApp.router(
+      routerConfig: GoRouter(
+        initialLocation: '/list/$listId',
+        routes: [
+          GoRoute(
+            path: '/list/:listId',
+            builder: (context, state) =>
+                ListDetailScreen(listId: state.pathParameters['listId']!),
+            routes: [
+              GoRoute(
+                path: 'map',
+                builder: (context, state) =>
+                    const Scaffold(body: Text('Map Picker')),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -341,7 +358,7 @@ void main() {
       expect(find.byIcon(Icons.location_on), findsOneWidget);
     });
 
-    testWidgets('tapping location chip shows "coming soon" snackbar',
+    testWidgets('tapping location chip navigates to map picker',
         (tester) async {
       final list = _makeList(geofenceId: 'geo-42');
 
@@ -355,12 +372,13 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.byType(ActionChip));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(find.text('Location assignment coming soon'), findsOneWidget);
+      // After navigation the map picker stub screen should be visible.
+      expect(find.text('Map Picker'), findsOneWidget);
     });
 
-    testWidgets('does not show location chip when list has no geofenceId',
+    testWidgets('shows Add Location chip when list has no geofenceId',
         (tester) async {
       final list = _makeList();
 
@@ -373,7 +391,9 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byType(ActionChip), findsNothing);
+      // An "Add Location" ActionChip is shown even without a geofenceId.
+      expect(find.byType(ActionChip), findsOneWidget);
+      expect(find.text('Add Location'), findsOneWidget);
     });
   });
 }

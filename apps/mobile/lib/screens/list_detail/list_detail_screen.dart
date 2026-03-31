@@ -1,7 +1,9 @@
 import 'package:domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ui_kit/ui_kit.dart';
+import 'package:whileyoureout/router/app_router.dart';
 import 'package:whileyoureout/screens/list_detail/list_detail_view_model.dart';
 
 /// The detail screen for a single [TodoList].
@@ -118,9 +120,16 @@ class _ListDetailBodyState extends ConsumerState<_ListDetailBody> {
 
     return Column(
       children: [
-        // Location chip (Phase 1: tapping shows coming-soon snackbar)
-        if (list != null && list.geofenceId != null)
-          _LocationChip(geofenceId: list.geofenceId!),
+        // Location chip — taps open the map picker.
+        if (list != null) ...[
+          if (list.geofenceId != null)
+            _LocationChip(
+              geofenceId: list.geofenceId!,
+              listId: widget.listId,
+            )
+          else
+            _AddLocationButton(listId: widget.listId),
+        ],
 
         // Item list or empty state
         Expanded(
@@ -162,9 +171,13 @@ class _ListDetailBodyState extends ConsumerState<_ListDetailBody> {
 // ---------------------------------------------------------------------------
 
 class _LocationChip extends StatelessWidget {
-  const _LocationChip({required this.geofenceId});
+  const _LocationChip({
+    required this.geofenceId,
+    required this.listId,
+  });
 
   final String geofenceId;
+  final String listId;
 
   @override
   Widget build(BuildContext context) {
@@ -179,13 +192,30 @@ class _LocationChip extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location assignment coming soon'),
-              ),
-            );
-          },
+          onPressed: () =>
+              context.push(AppRoutes.mapPickerPath(listId)),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddLocationButton extends StatelessWidget {
+  const _AddLocationButton({required this.listId});
+
+  final String listId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ActionChip(
+          avatar: const Icon(Icons.add_location_alt_outlined, size: 16),
+          label: const Text('Add Location'),
+          onPressed: () =>
+              context.push(AppRoutes.mapPickerPath(listId)),
         ),
       ),
     );
