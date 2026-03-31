@@ -1,0 +1,38 @@
+name: whileyoureout
+description: "While You're Out — location-aware todo app."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+
+dependencies:
+  cupertino_icons: ^1.0.8
+  data:
+    path: ../../packages/data
+  domain:
+    path: ../../packages/domain
+  flutter:
+    sdk: flutter
+  flutter_map: ^7.0.0
+  flutter_riverpod: ^2.5.0
+  geofencing:
+    path: ../../packages/geofencing
+  geolocator: ^12.0.0
+  go_router: ^14.0.0
+  latlong2: ^0.9.0
+  notifications:
+    path: ../../packages/notifications
+  permission_handler: ^11.0.0
+  shared_preferences: ^2.2.0
+  ui_kit:
+    path: ../../packages/ui_kit
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.0
+  very_good_analysis: ^5.1.0
+
+flutter:
+  uses-material-design: true
