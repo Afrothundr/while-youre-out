@@ -2,6 +2,7 @@ import 'package:data/data.dart';
 import 'package:domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geofencing/geofencing.dart';
+import 'package:whileyoureout/geofence_manager.dart';
 
 // ---------------------------------------------------------------------------
 // Database
@@ -34,15 +35,41 @@ final geofenceRepositoryProvider = Provider<GeofenceRepository>((ref) {
 });
 
 // ---------------------------------------------------------------------------
-// GeofenceService — Phase 2: StubGeofenceService
+// GeofenceService — Phase 3: RealGeofenceService (platform channel bridge)
 // ---------------------------------------------------------------------------
 
 /// Provides the [GeofenceService] implementation.
 ///
-/// Phase 2 uses [StubGeofenceService] which logs to the console instead of
-/// making real OS calls. Replace with the platform bridge in Phase 3.
+/// Uses [RealGeofenceService] which bridges to the native iOS
+/// CLLocationManager and Android GeofencingClient via platform channels.
 final geofenceServiceProvider = Provider<GeofenceService>((ref) {
-  return StubGeofenceService();
+  return RealGeofenceService();
+});
+
+// ---------------------------------------------------------------------------
+// GeofenceManager
+// ---------------------------------------------------------------------------
+
+/// Provides the [RefreshActiveGeofencesUseCase].
+final refreshActiveGeofencesUseCaseProvider =
+    Provider<RefreshActiveGeofencesUseCase>((ref) {
+  return RefreshActiveGeofencesUseCase(
+    ref.watch(geofenceRepositoryProvider),
+    ref.watch(geofenceServiceProvider),
+  );
+});
+
+/// Provides the singleton [GeofenceManager].
+///
+/// Automatically disposes the manager (cancels position stream) when the
+/// provider is no longer needed.
+final geofenceManagerProvider = Provider<GeofenceManager>((ref) {
+  final manager = GeofenceManager(
+    geofenceService: ref.watch(geofenceServiceProvider),
+    refreshActiveGeofences: ref.watch(refreshActiveGeofencesUseCaseProvider),
+  );
+  ref.onDispose(manager.dispose);
+  return manager;
 });
 
 // ---------------------------------------------------------------------------
