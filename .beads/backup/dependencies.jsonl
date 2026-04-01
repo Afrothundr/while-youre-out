@@ -30,5 +30,10 @@
 {"created_at":"2026-03-30T15:58:15Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-3r5","issue_id":"while-youre-out-qb1","type":"blocks"}
 {"created_at":"2026-03-30T15:58:15Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-aci","issue_id":"while-youre-out-qb1","type":"blocks"}
 {"created_at":"2026-03-30T15:56:25Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-1pq","issue_id":"while-youre-out-qys","type":"epic"}
+{"created_at":"2026-04-01T10:38:34Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-t77","issue_id":"while-youre-out-t77.1","type":"parent-child"}
+{"created_at":"2026-04-01T10:38:40Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-t77","issue_id":"while-youre-out-t77.2","type":"parent-child"}
+{"created_at":"2026-04-01T10:39:51Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-t77.1","issue_id":"while-youre-out-t77.2","type":"blocks"}
+{"created_at":"2026-04-01T10:38:45Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-t77","issue_id":"while-youre-out-t77.3","type":"parent-child"}
+{"created_at":"2026-04-01T10:39:51Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-t77.2","issue_id":"while-youre-out-t77.3","type":"blocks"}
 {"created_at":"2026-03-30T15:59:40Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-1pq","issue_id":"while-youre-out-v3r","type":"epic"}
 {"created_at":"2026-03-30T15:59:40Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-7mq","issue_id":"while-youre-out-v3r","type":"blocks"}
