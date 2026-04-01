@@ -122,15 +122,15 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
               lng: _center.longitude,
               service: ref.read(placesSuggestionServiceProvider),
             );
-        // If a suggestion was found, move the camera to it.
+        // If a suggestion was found, move the camera to it and place the pin.
         final vm = ref.read(_mapPickerViewModelProvider(widget.listId));
         if (vm.autoSuggestion != null && mounted) {
-          _moveTo(
-            LatLng(
-              vm.autoSuggestion!.latitude,
-              vm.autoSuggestion!.longitude,
-            ),
+          final suggestedLatLng = LatLng(
+            vm.autoSuggestion!.latitude,
+            vm.autoSuggestion!.longitude,
           );
+          _moveTo(suggestedLatLng);
+          vm.selectLocation(suggestedLatLng);
         }
       }
     } catch (_) {
