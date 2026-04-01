@@ -78,13 +78,15 @@ scripts:
   build:ios:
     run: |
       cd apps/mobile && \
-      flutter build ipa --no-codesign
+      flutter build ipa --no-codesign \
+        --dart-define=GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
     description: Build iOS archive (no code signing — for CI validation).
 
   build:android:
     run: |
       cd apps/mobile && \
-      flutter build appbundle --release
+      flutter build appbundle --release \
+        --dart-define=GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
     description: Build Android App Bundle.
 
   # ── Code generation ─────────────────────────────────────────────────────────
