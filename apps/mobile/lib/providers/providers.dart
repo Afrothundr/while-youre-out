@@ -2,6 +2,8 @@ import 'package:data/data.dart';
 import 'package:domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geofencing/geofencing.dart';
+import 'package:notifications/notifications.dart';
+import 'package:whileyoureout/geofence_event_handler.dart';
 import 'package:whileyoureout/geofence_manager.dart';
 
 // ---------------------------------------------------------------------------
@@ -47,6 +49,19 @@ final geofenceServiceProvider = Provider<GeofenceService>((ref) {
 });
 
 // ---------------------------------------------------------------------------
+// NotificationService
+// ---------------------------------------------------------------------------
+
+/// Provides the [NotificationService] implementation.
+///
+/// Uses [FlutterNotificationService] which is backed by
+/// `flutter_local_notifications`. Call [FlutterNotificationService.initialize]
+/// at app startup and register a tap callback once the router is ready.
+final notificationServiceProvider = Provider<FlutterNotificationService>((ref) {
+  return FlutterNotificationService();
+});
+
+// ---------------------------------------------------------------------------
 // GeofenceManager
 // ---------------------------------------------------------------------------
 
@@ -73,6 +88,23 @@ final geofenceManagerProvider = Provider<GeofenceManager>((ref) {
 });
 
 // ---------------------------------------------------------------------------
+// GeofenceEventHandler
+// ---------------------------------------------------------------------------
+
+/// Provides the singleton [GeofenceEventHandler].
+///
+/// Automatically disposes the handler (cancels the geofence event stream
+/// subscription) when the provider is no longer needed.
+final geofenceEventHandlerProvider = Provider<GeofenceEventHandler>((ref) {
+  final handler = GeofenceEventHandler(
+    geofenceService: ref.watch(geofenceServiceProvider),
+    handleEntry: ref.watch(handleGeofenceEntryUseCaseProvider),
+  );
+  ref.onDispose(handler.dispose);
+  return handler;
+});
+
+// ---------------------------------------------------------------------------
 // Use Cases
 // ---------------------------------------------------------------------------
 
@@ -88,6 +120,16 @@ final deleteListUseCaseProvider = Provider<DeleteListUseCase>((ref) {
     ref.watch(todoItemRepositoryProvider),
     ref.watch(geofenceRepositoryProvider),
     ref.watch(geofenceServiceProvider),
+  );
+});
+
+/// Provides the [HandleGeofenceEntryUseCase].
+final handleGeofenceEntryUseCaseProvider =
+    Provider<HandleGeofenceEntryUseCase>((ref) {
+  return HandleGeofenceEntryUseCase(
+    ref.watch(todoListRepositoryProvider),
+    ref.watch(todoItemRepositoryProvider),
+    ref.watch(notificationServiceProvider),
   );
 });
 

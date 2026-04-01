@@ -14,7 +14,16 @@ void main() {
   );
 }
 
-/// Starts the geofence manager once the widget tree is built.
+/// Bootstraps all background services once the widget tree is ready.
+///
+/// Startup order is important:
+/// 1. Register the notification tap callback **before** calling
+///    `FlutterNotificationService.initialize` so that any cold-start payload
+///    (app launched by tapping a notification) is routed correctly.
+/// 2. Initialise the notification service (sets up plugin, Android channel,
+///    and checks cold-start launch details).
+/// 3. Start `GeofenceManager` (iOS priority-queue region swapping).
+/// 4. Start `GeofenceEventHandler` (entry event → notification pipeline).
 class _AppStartup extends ConsumerStatefulWidget {
   const _AppStartup();
 
@@ -26,9 +35,29 @@ class _AppStartupState extends ConsumerState<_AppStartup> {
   @override
   void initState() {
     super.initState();
-    // Start geofence manager after the first frame so providers are ready.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Defer startup until after the first frame so that all providers are
+    // fully initialised and the router is accessible.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Read services and use-cases once; these are singletons for the app
+      // lifetime backed by Riverpod providers.
+      final notificationService = ref.read(notificationServiceProvider);
+      final router = ref.read(appRouterProvider);
+
+      // 1. Register the tap callback FIRST so that a cold-start payload
+      //    (delivered inside initialize → _handleColdStartLaunch) is handled
+      //    immediately rather than being dropped.
+      notificationService.notificationTapCallback =
+          (listId) => router.go(AppRoutes.listDetailPath(listId));
+
+      // 2. Initialise flutter_local_notifications, create the Android channel,
+      //    and handle any cold-start notification payload.
+      await notificationService.initialize();
+
+      // 3. Start iOS region priority-queue manager (no-op on Android).
       ref.read(geofenceManagerProvider).start();
+
+      // 4. Start the geofence-entry → notification pipeline.
+      ref.read(geofenceEventHandlerProvider).start();
     });
   }
 
