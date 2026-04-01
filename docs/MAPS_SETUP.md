@@ -77,12 +77,17 @@ Add `GOOGLE_MAPS_API_KEY` as a repository secret in GitHub:
 
 > **Settings → Secrets and variables → Actions → New repository secret**
 
-The CI workflow (`ci.yml`) already picks it up:
+Both CI workflows (`ci.yml` and `release.yml`) pass the key automatically:
 
-- The `build-ios` and `build-android` jobs set the secret as an environment variable, and
-  the melos build scripts forward it to Flutter via `--dart-define=GOOGLE_MAPS_API_KEY=`.
-- The Android Gradle build reads the same environment variable to resolve the
-  `${GOOGLE_MAPS_API_KEY}` manifest placeholder.
+- **`ci.yml`**: The `build-ios` and `build-android` jobs set the secret as an environment
+  variable, and the melos build scripts forward it to Flutter via
+  `--dart-define=GOOGLE_MAPS_API_KEY=`. The Android Gradle build reads the same environment
+  variable to resolve the `${GOOGLE_MAPS_API_KEY}` manifest placeholder.
+- **`release.yml`**: The `release-ios` job passes
+  `--dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}` to
+  `flutter build ipa`. The `release-android` job adds `GOOGLE_MAPS_API_KEY` to its `env:`
+  block and passes `--dart-define=GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY` to
+  `flutter build appbundle`.
 
 No further changes to CI are needed once the secret is added.
 

@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:domain/domain.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:whileyoureout/providers/providers.dart';
@@ -46,7 +48,8 @@ class MapPickerScreen extends ConsumerStatefulWidget {
 }
 
 class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
-  final MapController _mapController = MapController();
+  final Completer<gm.GoogleMapController> _mapControllerCompleter =
+      Completer();
   LatLng _center = _kDefaultCenter;
   bool _mapReady = false;
 
@@ -106,7 +109,13 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
   void _moveTo(LatLng latLng) {
     setState(() => _center = latLng);
     if (_mapReady) {
-      _mapController.move(latLng, _kDefaultZoom);
+      _mapControllerCompleter.future.then((controller) {
+        controller.animateCamera(
+          gm.CameraUpdate.newLatLng(
+            gm.LatLng(latLng.latitude, latLng.longitude),
+          ),
+        );
+      });
     }
   }
 
@@ -122,7 +131,7 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
           // ----------------------------------------------------------------
           _MapLayer(
             center: _center,
-            mapController: _mapController,
+            mapControllerCompleter: _mapControllerCompleter,
             viewModel: viewModel,
             onMapReady: () => setState(() => _mapReady = true),
           ),
@@ -167,65 +176,59 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
 class _MapLayer extends StatelessWidget {
   const _MapLayer({
     required this.center,
-    required this.mapController,
+    required this.mapControllerCompleter,
     required this.viewModel,
     required this.onMapReady,
   });
 
   final LatLng center;
-  final MapController mapController;
+  final Completer<gm.GoogleMapController> mapControllerCompleter;
   final MapPickerViewModel viewModel;
   final VoidCallback onMapReady;
 
   @override
   Widget build(BuildContext context) {
     final pin = viewModel.selectedLatLng;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
-    return FlutterMap(
-      mapController: mapController,
-      options: MapOptions(
-        initialCenter: center,
-        initialZoom: _kDefaultZoom,
-        onMapReady: onMapReady,
-        onTap: (_, latLng) => viewModel.selectLocation(latLng),
+    return gm.GoogleMap(
+      initialCameraPosition: gm.CameraPosition(
+        target: gm.LatLng(center.latitude, center.longitude),
+        zoom: _kDefaultZoom,
       ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.whileyoureout.app',
-        ),
-        if (pin != null) ...[
-          CircleLayer(
-            circles: [
-              CircleMarker(
-                point: pin,
+      onMapCreated: (controller) {
+        if (!mapControllerCompleter.isCompleted) {
+          mapControllerCompleter.complete(controller);
+        }
+        onMapReady();
+      },
+      onTap: (gm.LatLng latLng) => viewModel.selectLocation(
+        LatLng(latLng.latitude, latLng.longitude),
+      ),
+      myLocationEnabled: true,
+      myLocationButtonEnabled: false,
+      zoomControlsEnabled: false,
+      compassEnabled: false,
+      circles: pin == null
+          ? {}
+          : {
+              gm.Circle(
+                circleId: const gm.CircleId('geofence'),
+                center: gm.LatLng(pin.latitude, pin.longitude),
                 radius: viewModel.radiusMeters,
-                useRadiusInMeter: true,
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.15),
-                borderColor: Theme.of(context).colorScheme.primary,
-                borderStrokeWidth: 2,
+                fillColor: primaryColor.withValues(alpha: 0.15),
+                strokeColor: primaryColor,
+                strokeWidth: 2,
               ),
-            ],
-          ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: pin,
-                width: 40,
-                height: 40,
-                child: Icon(
-                  Icons.location_pin,
-                  size: 40,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+            },
+      markers: pin == null
+          ? {}
+          : {
+              gm.Marker(
+                markerId: const gm.MarkerId('pin'),
+                position: gm.LatLng(pin.latitude, pin.longitude),
               ),
-            ],
-          ),
-        ],
-      ],
+            },
     );
   }
 }
