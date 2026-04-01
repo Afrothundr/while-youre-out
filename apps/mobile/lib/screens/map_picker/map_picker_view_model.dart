@@ -1,6 +1,7 @@
 import 'package:domain/domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 /// View-model for the map picker screen.
 ///
@@ -20,6 +21,10 @@ class MapPickerViewModel extends ChangeNotifier {
   /// Whether an async save / remove operation is in progress.
   bool isSaving = false;
 
+  /// The auto-suggested place from the Places API, or null if none was found
+  /// or the user dismissed the card.
+  PlaceSuggestion? autoSuggestion;
+
   /// Updates the selected location to [latLng] and notifies listeners.
   void selectLocation(LatLng latLng) {
     selectedLatLng = latLng;
@@ -35,6 +40,45 @@ class MapPickerViewModel extends ChangeNotifier {
   /// Updates the label to [value] and notifies listeners.
   void updateLabel(String value) {
     label = value;
+    notifyListeners();
+  }
+
+  /// Queries [service] for a place matching [listTitle] near ([lat], [lng]).
+  ///
+  /// If a suggestion is found:
+  /// - Sets [autoSuggestion].
+  /// - Pre-fills [label] with the place name if [label] is still empty
+  ///   (does not overwrite a label the user has already typed).
+  /// - Notifies listeners.
+  ///
+  /// If [service] returns null (no match, key missing, or network error),
+  /// this method is a no-op.
+  Future<void> tryAutoSuggestLocation({
+    required String listTitle,
+    required double lat,
+    required double lng,
+    required PlacesSuggestionService service,
+  }) async {
+    final suggestion = await service.findNearbyPlace(
+      keyword: listTitle,
+      lat: lat,
+      lng: lng,
+    );
+    if (suggestion != null) {
+      autoSuggestion = suggestion;
+      if (label.isEmpty) {
+        label = suggestion.name;
+      }
+      notifyListeners();
+    }
+  }
+
+  /// Clears [autoSuggestion] (called when the user dismisses the card).
+  ///
+  /// Does NOT clear [label] — the user may have already accepted the
+  /// pre-filled label and started editing it.
+  void dismissAutoSuggestion() {
+    autoSuggestion = null;
     notifyListeners();
   }
 

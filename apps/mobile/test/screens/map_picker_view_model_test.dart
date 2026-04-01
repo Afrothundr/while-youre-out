@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:whileyoureout/screens/map_picker/map_picker_view_model.dart';
+import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -18,6 +19,9 @@ class MockAssignLocationUseCase extends Mock implements AssignLocationUseCase {}
 
 class MockRegisterGeofenceUseCase extends Mock
     implements RegisterGeofenceUseCase {}
+
+class MockPlacesSuggestionService extends Mock
+    implements PlacesSuggestionService {}
 
 class MockUnregisterGeofenceUseCase extends Mock
     implements UnregisterGeofenceUseCase {}
@@ -421,5 +425,188 @@ void main() {
 
       expect(viewModel.isSaving, isFalse);
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // autoSuggest
+  // -------------------------------------------------------------------------
+
+  group('MapPickerViewModel — autoSuggest', () {
+    late MapPickerViewModel viewModel;
+
+    setUp(() => viewModel = MapPickerViewModel());
+    tearDown(() => viewModel.dispose());
+
+    test(
+      'tryAutoSuggestLocation sets autoSuggestion and pre-fills empty label',
+      () async {
+        final service = MockPlacesSuggestionService();
+        when(
+          () => service.findNearbyPlace(
+            keyword: any(named: 'keyword'),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+            radiusMeters: any(named: 'radiusMeters'),
+          ),
+        ).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: 'Walmart',
+            latitude: 37.77,
+            longitude: -122.41,
+            distanceMeters: 400,
+          ),
+        );
+
+        await viewModel.tryAutoSuggestLocation(
+          listTitle: 'Walmart',
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(viewModel.autoSuggestion?.name, equals('Walmart'));
+        expect(viewModel.label, equals('Walmart'));
+      },
+    );
+
+    test(
+      'tryAutoSuggestLocation does not overwrite '
+      'a label the user already typed',
+      () async {
+        viewModel.updateLabel('My custom label');
+
+        final service = MockPlacesSuggestionService();
+        when(
+          () => service.findNearbyPlace(
+            keyword: any(named: 'keyword'),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+            radiusMeters: any(named: 'radiusMeters'),
+          ),
+        ).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: 'Target',
+            latitude: 37.77,
+            longitude: -122.41,
+            distanceMeters: 300,
+          ),
+        );
+
+        await viewModel.tryAutoSuggestLocation(
+          listTitle: 'Target',
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        // autoSuggestion is set but the user's label is preserved.
+        expect(viewModel.autoSuggestion?.name, equals('Target'));
+        expect(viewModel.label, equals('My custom label'));
+      },
+    );
+
+    test(
+      'tryAutoSuggestLocation is a no-op when service returns null',
+      () async {
+        final service = MockPlacesSuggestionService();
+        when(
+          () => service.findNearbyPlace(
+            keyword: any(named: 'keyword'),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+            radiusMeters: any(named: 'radiusMeters'),
+          ),
+        ).thenAnswer((_) async => null);
+
+        var notified = false;
+        viewModel.addListener(() => notified = true);
+
+        await viewModel.tryAutoSuggestLocation(
+          listTitle: 'Nowhere',
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(viewModel.autoSuggestion, isNull);
+        expect(viewModel.label, isEmpty);
+        expect(notified, isFalse);
+      },
+    );
+
+    test(
+      'dismissAutoSuggestion clears autoSuggestion and notifies listeners',
+      () async {
+        final service = MockPlacesSuggestionService();
+        when(
+          () => service.findNearbyPlace(
+            keyword: any(named: 'keyword'),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+            radiusMeters: any(named: 'radiusMeters'),
+          ),
+        ).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: 'Costco',
+            latitude: 37.77,
+            longitude: -122.41,
+            distanceMeters: 1200,
+          ),
+        );
+
+        await viewModel.tryAutoSuggestLocation(
+          listTitle: 'Costco',
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(viewModel.autoSuggestion, isNotNull);
+
+        var notified = false;
+        viewModel
+          ..addListener(() => notified = true)
+          ..dismissAutoSuggestion();
+
+        expect(viewModel.autoSuggestion, isNull);
+        expect(notified, isTrue);
+      },
+    );
+
+    test(
+      'dismissAutoSuggestion does not clear the label',
+      () async {
+        final service = MockPlacesSuggestionService();
+        when(
+          () => service.findNearbyPlace(
+            keyword: any(named: 'keyword'),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+            radiusMeters: any(named: 'radiusMeters'),
+          ),
+        ).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: 'Kroger',
+            latitude: 37.77,
+            longitude: -122.41,
+            distanceMeters: 800,
+          ),
+        );
+
+        await viewModel.tryAutoSuggestLocation(
+          listTitle: 'Kroger',
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(viewModel.label, equals('Kroger'));
+
+        viewModel.dismissAutoSuggestion();
+
+        expect(viewModel.autoSuggestion, isNull);
+        expect(viewModel.label, equals('Kroger')); // label preserved
+      },
+    );
   });
 }
