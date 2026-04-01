@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:whileyoureout/providers/providers.dart';
 import 'package:whileyoureout/screens/map_picker/map_picker_view_model.dart';
+import 'package:whileyoureout/services/places_autocomplete_service.dart';
 import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -154,6 +155,7 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final viewModel = ref.watch(_mapPickerViewModelProvider(widget.listId));
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       body: Stack(
@@ -166,34 +168,58 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
             mapControllerCompleter: _mapControllerCompleter,
             viewModel: viewModel,
             onMapReady: () => setState(() => _mapReady = true),
+            onMapTapped: (gm.LatLng latLng) {
+              viewModel
+                ..clearAutocompleteSuggestions()
+                ..tryAutoFillLabel(
+                  lat: latLng.latitude,
+                  lng: latLng.longitude,
+                  service: ref.read(placesAutocompleteServiceProvider),
+                );
+            },
           ),
 
           // ----------------------------------------------------------------
           // Back button
           // ----------------------------------------------------------------
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
+            top: topPadding + 8,
             left: 8,
-            child: SafeArea(
-              child: Material(
-                color: Theme.of(context).colorScheme.surface,
-                shape: const CircleBorder(),
-                elevation: 2,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
-                  tooltip: 'Back',
-                ),
+            child: Material(
+              color: Theme.of(context).colorScheme.surface,
+              shape: const CircleBorder(),
+              elevation: 2,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.pop(),
+                tooltip: 'Back',
               ),
             ),
           ),
 
           // ----------------------------------------------------------------
-          // Suggestion card — shown when Places API found a nearby match
+          // Search bar (user-driven autocomplete) — positioned to the right
+          // of the back button in the same row
           // ----------------------------------------------------------------
-          if (viewModel.autoSuggestion != null)
+          Positioned(
+            top: topPadding + 8,
+            left: 64,
+            right: 8,
+            child: _SearchBarWithSuggestions(
+              viewModel: viewModel,
+              locationBias: _center,
+              onMoveCamera: _moveTo,
+            ),
+          ),
+
+          // ----------------------------------------------------------------
+          // Auto-suggest card — shown when Places API found a nearby match
+          // and the user has not opened the manual search dropdown
+          // ----------------------------------------------------------------
+          if (viewModel.autoSuggestion != null &&
+              viewModel.autocompleteSuggestions.isEmpty)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 64,
+              top: topPadding + 64,
               left: 16,
               right: 16,
               child: _SuggestionCard(
@@ -216,6 +242,238 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
 }
 
 // ---------------------------------------------------------------------------
+// Search bar with autocomplete suggestions
+// ---------------------------------------------------------------------------
+
+class _SearchBarWithSuggestions extends ConsumerStatefulWidget {
+  const _SearchBarWithSuggestions({
+    required this.viewModel,
+    required this.locationBias,
+    required this.onMoveCamera,
+  });
+
+  final MapPickerViewModel viewModel;
+
+  /// Current map center used to bias autocomplete results geographically.
+  final LatLng locationBias;
+
+  /// Called with the place's [LatLng] after the user selects a suggestion so
+  /// the map camera can be animated to the new location.
+  final void Function(LatLng) onMoveCamera;
+
+  @override
+  ConsumerState<_SearchBarWithSuggestions> createState() =>
+      _SearchBarWithSuggestionsState();
+}
+
+class _SearchBarWithSuggestionsState
+    extends ConsumerState<_SearchBarWithSuggestions> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode = FocusNode()..addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_onFocusChange)
+      ..dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      widget.viewModel.clearAutocompleteSuggestions();
+    }
+    setState(() {}); // repaint to show/hide clear button
+  }
+
+  Future<void> _onSuggestionTap(AutocompletePrediction prediction) async {
+    _focusNode.unfocus();
+    _controller.text = prediction.mainText;
+    setState(() {}); // update clear button visibility
+
+    final latLng = await widget.viewModel.selectPrediction(
+      prediction,
+      service: ref.read(placesAutocompleteServiceProvider),
+    );
+
+    if (latLng != null) {
+      widget.onMoveCamera(latLng);
+    }
+  }
+
+  void _onClear() {
+    _controller.clear();
+    _focusNode.unfocus();
+    widget.viewModel.clearAutocompleteSuggestions();
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final suggestions = widget.viewModel.autocompleteSuggestions;
+    final isLoading = widget.viewModel.isLoadingAutocomplete;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ------------------------------------------------------------------
+        // Search text field
+        // ------------------------------------------------------------------
+        Material(
+          elevation: 3,
+          borderRadius: BorderRadius.circular(24),
+          color: colorScheme.surface,
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            textInputAction: TextInputAction.search,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: 'Search for a place…',
+              prefixIcon: isLoading
+                  ? Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    )
+                  : const Icon(Icons.search),
+              suffixIcon: _controller.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'Clear search',
+                      onPressed: _onClear,
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.transparent,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            onChanged: (query) {
+              setState(() {}); // repaint clear button
+              widget.viewModel.updateSearchQuery(
+                query,
+                service: ref.read(placesAutocompleteServiceProvider),
+                lat: widget.locationBias.latitude,
+                lng: widget.locationBias.longitude,
+              );
+            },
+          ),
+        ),
+
+        // ------------------------------------------------------------------
+        // Suggestions dropdown
+        // ------------------------------------------------------------------
+        if (suggestions.isNotEmpty)
+          Card(
+            margin: const EdgeInsets.only(top: 4),
+            elevation: 6,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < suggestions.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: colorScheme.outlineVariant,
+                    ),
+                  InkWell(
+                    borderRadius: BorderRadius.vertical(
+                      top: i == 0
+                          ? const Radius.circular(12)
+                          : Radius.zero,
+                      bottom: i == suggestions.length - 1
+                          ? const Radius.circular(12)
+                          : Radius.zero,
+                    ),
+                    onTap: () => _onSuggestionTap(suggestions[i]),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.place_outlined,
+                            size: 20,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  suggestions[i].mainText,
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (suggestions[i].description !=
+                                    suggestions[i].mainText)
+                                  Text(
+                                    suggestions[i].description,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Map layer
 // ---------------------------------------------------------------------------
 
@@ -225,12 +483,14 @@ class _MapLayer extends StatelessWidget {
     required this.mapControllerCompleter,
     required this.viewModel,
     required this.onMapReady,
+    required this.onMapTapped,
   });
 
   final LatLng center;
   final Completer<gm.GoogleMapController> mapControllerCompleter;
   final MapPickerViewModel viewModel;
   final VoidCallback onMapReady;
+  final ValueChanged<gm.LatLng> onMapTapped;
 
   @override
   Widget build(BuildContext context) {
@@ -248,9 +508,12 @@ class _MapLayer extends StatelessWidget {
         }
         onMapReady();
       },
-      onTap: (gm.LatLng latLng) => viewModel.selectLocation(
-        LatLng(latLng.latitude, latLng.longitude),
-      ),
+      onTap: (gm.LatLng latLng) {
+        viewModel.selectLocation(
+          LatLng(latLng.latitude, latLng.longitude),
+        );
+        onMapTapped(latLng);
+      },
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
@@ -310,8 +573,9 @@ class _BottomSheetState extends ConsumerState<_BottomSheet> {
   }
 
   /// Keeps the label controller in sync when the view model's label is updated
-  /// externally (e.g. by auto-suggest). Skips the update if the controller
-  /// already matches or the user has an active selection (mid-edit).
+  /// externally (e.g. by auto-suggest or autocomplete selection). Skips the
+  /// update if the controller already matches or the user has an active
+  /// selection (mid-edit).
   void _syncLabelFromViewModel() {
     if (_labelController.text != widget.viewModel.label &&
         !_labelController.selection.isValid) {
@@ -441,7 +705,7 @@ class _BottomSheetState extends ConsumerState<_BottomSheet> {
 }
 
 // ---------------------------------------------------------------------------
-// Suggestion card
+// Suggestion card (auto-suggest on open)
 // ---------------------------------------------------------------------------
 
 class _SuggestionCard extends StatelessWidget {
