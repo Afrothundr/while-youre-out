@@ -185,16 +185,14 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
           Positioned(
             top: topPadding + 8,
             left: 8,
-            child: SafeArea(
-              child: Material(
-                color: Theme.of(context).colorScheme.surface,
-                shape: const CircleBorder(),
-                elevation: 2,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
-                  tooltip: 'Back',
-                ),
+            child: Material(
+              color: Theme.of(context).colorScheme.surface,
+              shape: const CircleBorder(),
+              elevation: 2,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.pop(),
+                tooltip: 'Back',
               ),
             ),
           ),
