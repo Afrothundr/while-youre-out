@@ -5,6 +5,8 @@ import 'package:geofencing/geofencing.dart';
 import 'package:notifications/notifications.dart';
 import 'package:whileyoureout/geofence_event_handler.dart';
 import 'package:whileyoureout/geofence_manager.dart';
+import 'package:whileyoureout/services/google_places_suggestion_service.dart';
+import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 // ---------------------------------------------------------------------------
 // Database
@@ -206,4 +208,19 @@ final listByIdProvider =
   return ref.watch(todoListRepositoryProvider).watchAllLists().map(
         (lists) => lists.where((l) => l.id == listId).firstOrNull,
       );
+});
+
+// ---------------------------------------------------------------------------
+// Maps API key (injected at build time via --dart-define)
+// ---------------------------------------------------------------------------
+
+const String _googleMapsApiKey =
+    String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+
+/// Provides the [PlacesSuggestionService] backed by Google Places.
+///
+/// Returns null suggestions gracefully when the API key is not configured.
+final placesSuggestionServiceProvider =
+    Provider<PlacesSuggestionService>((ref) {
+  return const GooglePlacesSuggestionService(apiKey: _googleMapsApiKey);
 });

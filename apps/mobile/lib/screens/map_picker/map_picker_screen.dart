@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:whileyoureout/providers/providers.dart';
 import 'package:whileyoureout/screens/map_picker/map_picker_view_model.dart';
+import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 // ---------------------------------------------------------------------------
 // Default fallback location — San Francisco
@@ -104,6 +105,37 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
     } catch (_) {
       // Permission denied or error — stay on default center.
     }
+
+    // Auto-suggest: search for a nearby place matching the list title.
+    // This runs after the map is already positioned, so it is non-blocking
+    // from the user's perspective. If no match is found, nothing changes.
+    try {
+      final listForSuggest = await ref
+          .read(todoListRepositoryProvider)
+          .getListById(widget.listId);
+      if (listForSuggest != null && mounted) {
+        await ref
+            .read(_mapPickerViewModelProvider(widget.listId))
+            .tryAutoSuggestLocation(
+              listTitle: listForSuggest.title,
+              lat: _center.latitude,
+              lng: _center.longitude,
+              service: ref.read(placesSuggestionServiceProvider),
+            );
+        // If a suggestion was found, move the camera to it and place the pin.
+        final vm = ref.read(_mapPickerViewModelProvider(widget.listId));
+        if (vm.autoSuggestion != null && mounted) {
+          final suggestedLatLng = LatLng(
+            vm.autoSuggestion!.latitude,
+            vm.autoSuggestion!.longitude,
+          );
+          _moveTo(suggestedLatLng);
+          vm.selectLocation(suggestedLatLng);
+        }
+      }
+    } catch (_) {
+      // Auto-suggest is best-effort; never crash _initMap over it.
+    }
   }
 
   void _moveTo(LatLng latLng) {
@@ -155,6 +187,20 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
               ),
             ),
           ),
+
+          // ----------------------------------------------------------------
+          // Suggestion card — shown when Places API found a nearby match
+          // ----------------------------------------------------------------
+          if (viewModel.autoSuggestion != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 64,
+              left: 16,
+              right: 16,
+              child: _SuggestionCard(
+                suggestion: viewModel.autoSuggestion!,
+                onDismiss: viewModel.dismissAutoSuggestion,
+              ),
+            ),
 
           // ----------------------------------------------------------------
           // Bottom sheet
@@ -260,10 +306,26 @@ class _BottomSheetState extends ConsumerState<_BottomSheet> {
       ..selection = TextSelection.collapsed(
         offset: widget.viewModel.label.length,
       );
+    widget.viewModel.addListener(_syncLabelFromViewModel);
+  }
+
+  /// Keeps the label controller in sync when the view model's label is updated
+  /// externally (e.g. by auto-suggest). Skips the update if the controller
+  /// already matches or the user has an active selection (mid-edit).
+  void _syncLabelFromViewModel() {
+    if (_labelController.text != widget.viewModel.label &&
+        !_labelController.selection.isValid) {
+      _labelController
+        ..text = widget.viewModel.label
+        ..selection = TextSelection.collapsed(
+          offset: widget.viewModel.label.length,
+        );
+    }
   }
 
   @override
   void dispose() {
+    widget.viewModel.removeListener(_syncLabelFromViewModel);
     _labelController.dispose();
     super.dispose();
   }
@@ -375,6 +437,44 @@ class _BottomSheetState extends ConsumerState<_BottomSheet> {
       );
       context.pop();
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Suggestion card
+// ---------------------------------------------------------------------------
+
+class _SuggestionCard extends StatelessWidget {
+  const _SuggestionCard({
+    required this.suggestion,
+    required this.onDismiss,
+  });
+
+  final PlaceSuggestion suggestion;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final km = (suggestion.distanceMeters / 1000).toStringAsFixed(1);
+    return Card(
+      elevation: 4,
+      child: ListTile(
+        leading: const Icon(Icons.auto_awesome_outlined),
+        title: Text(
+          suggestion.name,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        subtitle: Text('$km km away — tap elsewhere to change'),
+        trailing: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: 'Dismiss suggestion',
+          onPressed: onDismiss,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+    );
   }
 }
 

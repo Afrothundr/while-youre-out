@@ -42,7 +42,11 @@ class GeofenceManager {
         accuracy: LocationAccuracy.low,
         distanceFilter: 500,
       ),
-    ).listen((position) async {
+    ).handleError((_) {
+      // Swallow location errors (e.g. kCLErrorLocationUnknown in the iOS
+      // Simulator). The stream remains open and will emit positions once
+      // the device/simulator acquires a fix.
+    }).listen((position) async {
       await refreshActiveGeofences(
         currentLat: position.latitude,
         currentLng: position.longitude,
