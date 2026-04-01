@@ -113,6 +113,30 @@ class MapPickerViewModel extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
+  // Reverse-geocode label auto-fill
+  // ---------------------------------------------------------------------------
+
+  /// Reverse-geocodes ([lat], [lng]) via [service] and pre-fills [label] with
+  /// the result when [label] is still empty.
+  ///
+  /// Called when the user drops a pin by tapping the map directly.  Does
+  /// nothing if the user has already typed a label, if the coordinates resolve
+  /// to nothing useful, or if any network error occurs.
+  Future<void> tryAutoFillLabel({
+    required double lat,
+    required double lng,
+    required PlacesAutocompleteService service,
+  }) async {
+    if (label.isNotEmpty) return;
+
+    final placeName = await service.reverseGeocode(lat, lng);
+    if (placeName != null && placeName.isNotEmpty && label.isEmpty) {
+      label = placeName;
+      notifyListeners();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Autocomplete search bar
   // ---------------------------------------------------------------------------
 

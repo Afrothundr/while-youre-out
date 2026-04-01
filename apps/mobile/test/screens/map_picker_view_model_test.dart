@@ -615,6 +615,129 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // tryAutoFillLabel
+  // -------------------------------------------------------------------------
+
+  group('MapPickerViewModel — tryAutoFillLabel', () {
+    late MapPickerViewModel viewModel;
+
+    setUp(() => viewModel = MapPickerViewModel());
+    tearDown(() => viewModel.dispose());
+
+    test(
+      'tryAutoFillLabel sets label from reverse-geocoded place name '
+      'when label is empty',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.reverseGeocode(any(), any()))
+            .thenAnswer((_) async => 'Walmart Supercenter');
+
+        await viewModel.tryAutoFillLabel(
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(viewModel.label, equals('Walmart Supercenter'));
+      },
+    );
+
+    test(
+      'tryAutoFillLabel notifies listeners when label is updated',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.reverseGeocode(any(), any()))
+            .thenAnswer((_) async => '123 Main St');
+
+        var notified = false;
+        viewModel.addListener(() => notified = true);
+
+        await viewModel.tryAutoFillLabel(
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(notified, isTrue);
+      },
+    );
+
+    test(
+      'tryAutoFillLabel is a no-op when label is already set',
+      () async {
+        viewModel.updateLabel('My custom label');
+
+        final service = MockPlacesAutocompleteService();
+
+        await viewModel.tryAutoFillLabel(
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        // reverseGeocode should never be called.
+        verifyNever(() => service.reverseGeocode(any(), any()));
+        expect(viewModel.label, equals('My custom label'));
+      },
+    );
+
+    test(
+      'tryAutoFillLabel is a no-op when service returns null',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.reverseGeocode(any(), any()))
+            .thenAnswer((_) async => null);
+
+        var notified = false;
+        viewModel.addListener(() => notified = true);
+
+        await viewModel.tryAutoFillLabel(
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(viewModel.label, isEmpty);
+        expect(notified, isFalse);
+      },
+    );
+
+    test(
+      'tryAutoFillLabel is a no-op when service returns empty string',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.reverseGeocode(any(), any()))
+            .thenAnswer((_) async => '');
+
+        await viewModel.tryAutoFillLabel(
+          lat: 37.77,
+          lng: -122.41,
+          service: service,
+        );
+
+        expect(viewModel.label, isEmpty);
+      },
+    );
+
+    test(
+      'tryAutoFillLabel passes correct coordinates to service',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.reverseGeocode(any(), any()))
+            .thenAnswer((_) async => 'CVS Pharmacy');
+
+        await viewModel.tryAutoFillLabel(
+          lat: 51.5074,
+          lng: -0.1278,
+          service: service,
+        );
+
+        verify(() => service.reverseGeocode(51.5074, -0.1278)).called(1);
+      },
+    );
+  });
+
+  // -------------------------------------------------------------------------
   // Autocomplete search bar
   // -------------------------------------------------------------------------
 

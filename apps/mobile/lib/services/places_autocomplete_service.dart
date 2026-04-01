@@ -41,4 +41,12 @@ abstract class PlacesAutocompleteService {
   /// Returns a [PlaceSuggestion] on success, or `null` if the place could not
   /// be found or any network / parse error occurs. Never throws.
   Future<PlaceSuggestion?> getPlaceDetails(String placeId);
+
+  /// Reverse-geocodes ([lat], [lng]) to a short human-readable place label.
+  ///
+  /// Returns the primary component of the formatted address (e.g.
+  /// `"Walmart Supercenter"` or `"1600 Amphitheatre Pkwy"`), or `null` when
+  /// the API key is missing, the coordinates resolve to nothing useful, or any
+  /// network / parse error occurs. Never throws.
+  Future<String?> reverseGeocode(double lat, double lng);
 }

@@ -109,4 +109,42 @@ class GooglePlacesAutocompleteService implements PlacesAutocompleteService {
       return null;
     }
   }
+
+  @override
+  Future<String?> reverseGeocode(double lat, double lng) async {
+    if (apiKey.isEmpty) return null;
+
+    final uri =
+        Uri.parse('https://maps.googleapis.com/maps/api/geocode/json')
+            .replace(queryParameters: {
+      'latlng': '$lat,$lng',
+      'key': apiKey,
+    },);
+
+    try {
+      final response =
+          await http.get(uri).timeout(const Duration(seconds: 5));
+      if (response.statusCode != 200) return null;
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final status = body['status'] as String?;
+      if (status != 'OK') return null;
+
+      final results = body['results'] as List<dynamic>?;
+      if (results == null || results.isEmpty) return null;
+
+      final first = results.first as Map<String, dynamic>;
+      final formatted =
+          (first['formatted_address'] as String?)?.trim();
+      if (formatted == null || formatted.isEmpty) return null;
+
+      // Use the first comma-delimited component as the short label,
+      // e.g. "Walmart Supercenter" from
+      //      "Walmart Supercenter, 1600 Main St, SF, CA 94103, USA"
+      return formatted.split(',').first.trim();
+    } catch (_) {
+      // Network error, timeout, JSON parse error — degrade gracefully.
+      return null;
+    }
+  }
 }

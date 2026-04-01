@@ -168,7 +168,15 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
             mapControllerCompleter: _mapControllerCompleter,
             viewModel: viewModel,
             onMapReady: () => setState(() => _mapReady = true),
-            onMapTapped: (_) => viewModel.clearAutocompleteSuggestions(),
+            onMapTapped: (gm.LatLng latLng) {
+              viewModel
+                ..clearAutocompleteSuggestions()
+                ..tryAutoFillLabel(
+                  lat: latLng.latitude,
+                  lng: latLng.longitude,
+                  service: ref.read(placesAutocompleteServiceProvider),
+                );
+            },
           ),
 
           // ----------------------------------------------------------------
