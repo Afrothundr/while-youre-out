@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:whileyoureout/screens/map_picker/map_picker_view_model.dart';
+import 'package:whileyoureout/services/places_autocomplete_service.dart';
 import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,9 @@ class MockPlacesSuggestionService extends Mock
 
 class MockUnregisterGeofenceUseCase extends Mock
     implements UnregisterGeofenceUseCase {}
+
+class MockPlacesAutocompleteService extends Mock
+    implements PlacesAutocompleteService {}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -606,6 +610,329 @@ void main() {
 
         expect(viewModel.autoSuggestion, isNull);
         expect(viewModel.label, equals('Kroger')); // label preserved
+      },
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Autocomplete search bar
+  // -------------------------------------------------------------------------
+
+  group('MapPickerViewModel — autocomplete search', () {
+    late MapPickerViewModel viewModel;
+
+    setUp(() => viewModel = MapPickerViewModel());
+    tearDown(() => viewModel.dispose());
+
+    // -----------------------------------------------------------------------
+    // updateSearchQuery — blank input
+    // -----------------------------------------------------------------------
+
+    test(
+      'updateSearchQuery with blank input immediately clears suggestions '
+      'without hitting the network',
+      () async {
+        final service = MockPlacesAutocompleteService();
+
+        // Seed some suggestions first.
+        viewModel.autocompleteSuggestions = [
+          const AutocompletePrediction(
+            placeId: 'p1',
+            description: 'Walmart, SF',
+            mainText: 'Walmart',
+          ),
+        ];
+
+        var notified = false;
+        viewModel
+          ..addListener(() => notified = true)
+          ..updateSearchQuery('', service: service);
+
+        expect(viewModel.autocompleteSuggestions, isEmpty);
+        expect(viewModel.isLoadingAutocomplete, isFalse);
+        expect(notified, isTrue);
+
+        // Network should never be called for blank input.
+        verifyNever(
+          () => service.getSuggestions(
+            any(),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'updateSearchQuery with whitespace-only input immediately clears '
+      'suggestions without hitting the network',
+      () {
+        final service = MockPlacesAutocompleteService();
+
+        viewModel.updateSearchQuery('   ', service: service);
+
+        expect(viewModel.autocompleteSuggestions, isEmpty);
+        verifyNever(
+          () => service.getSuggestions(
+            any(),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+          ),
+        );
+      },
+    );
+
+    // -----------------------------------------------------------------------
+    // updateSearchQuery — debounced fetch
+    // -----------------------------------------------------------------------
+
+    test(
+      'updateSearchQuery populates autocompleteSuggestions after debounce',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(
+          () => service.getSuggestions(
+            any(),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            const AutocompletePrediction(
+              placeId: 'place-1',
+              description: 'Walmart Supercenter, Market St, San Francisco',
+              mainText: 'Walmart Supercenter',
+            ),
+            const AutocompletePrediction(
+              placeId: 'place-2',
+              description: 'Walmart Neighborhood Market, 3rd St, SF',
+              mainText: 'Walmart Neighborhood Market',
+            ),
+          ],
+        );
+
+        viewModel.updateSearchQuery(
+          'Walmart',
+          service: service,
+          lat: 37.77,
+          lng: -122.41,
+        );
+
+        // Before debounce fires, suggestions are still empty.
+        expect(viewModel.autocompleteSuggestions, isEmpty);
+
+        // Wait for debounce (300 ms) + network round-trip buffer.
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+
+        expect(viewModel.autocompleteSuggestions, hasLength(2));
+        expect(
+          viewModel.autocompleteSuggestions.first.mainText,
+          equals('Walmart Supercenter'),
+        );
+        expect(viewModel.isLoadingAutocomplete, isFalse);
+      },
+    );
+
+    test(
+      'updateSearchQuery cancels in-flight debounce when called again',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        var callCount = 0;
+        when(
+          () => service.getSuggestions(
+            any(),
+            lat: any(named: 'lat'),
+            lng: any(named: 'lng'),
+          ),
+        ).thenAnswer((_) async {
+          callCount++;
+          return [];
+        });
+
+        // Rapid successive calls — only the last one should fire.
+        viewModel
+          ..updateSearchQuery('W', service: service)
+          ..updateSearchQuery('Wa', service: service)
+          ..updateSearchQuery('Wal', service: service);
+
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+
+        expect(callCount, equals(1));
+      },
+    );
+
+    // -----------------------------------------------------------------------
+    // clearAutocompleteSuggestions
+    // -----------------------------------------------------------------------
+
+    test(
+      'clearAutocompleteSuggestions resets state and notifies listeners',
+      () {
+        viewModel
+          ..autocompleteSuggestions = [
+            const AutocompletePrediction(
+              placeId: 'p1',
+              description: 'Target, SF',
+              mainText: 'Target',
+            ),
+          ]
+          ..isLoadingAutocomplete = true;
+
+        var notified = false;
+        viewModel
+          ..addListener(() => notified = true)
+          ..clearAutocompleteSuggestions();
+
+        expect(viewModel.autocompleteSuggestions, isEmpty);
+        expect(viewModel.isLoadingAutocomplete, isFalse);
+        expect(notified, isTrue);
+      },
+    );
+
+    // -----------------------------------------------------------------------
+    // selectPrediction
+    // -----------------------------------------------------------------------
+
+    test(
+      'selectPrediction sets selectedLatLng and label from place details',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.getPlaceDetails('place-1')).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: 'Whole Foods Market',
+            latitude: 37.79,
+            longitude: -122.43,
+            distanceMeters: 0,
+          ),
+        );
+
+        const prediction = AutocompletePrediction(
+          placeId: 'place-1',
+          description: 'Whole Foods Market, California St, SF',
+          mainText: 'Whole Foods Market',
+        );
+
+        final result = await viewModel.selectPrediction(
+          prediction,
+          service: service,
+        );
+
+        expect(result, isNotNull);
+        expect(result!.latitude, closeTo(37.79, 0.0001));
+        expect(result.longitude, closeTo(-122.43, 0.0001));
+        expect(viewModel.selectedLatLng?.latitude, closeTo(37.79, 0.0001));
+        expect(viewModel.label, equals('Whole Foods Market'));
+        expect(viewModel.autocompleteSuggestions, isEmpty);
+        expect(viewModel.isLoadingAutocomplete, isFalse);
+      },
+    );
+
+    test(
+      'selectPrediction uses prediction.mainText for label '
+      'even when details.name differs',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.getPlaceDetails('place-2')).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: 'CVS Pharmacy #12345',
+            latitude: 37.78,
+            longitude: -122.40,
+            distanceMeters: 0,
+          ),
+        );
+
+        const prediction = AutocompletePrediction(
+          placeId: 'place-2',
+          description: 'CVS Pharmacy, Mission St, SF',
+          mainText: 'CVS Pharmacy',
+        );
+
+        await viewModel.selectPrediction(prediction, service: service);
+
+        // mainText ('CVS Pharmacy') takes precedence over the full API name.
+        expect(viewModel.label, equals('CVS Pharmacy'));
+      },
+    );
+
+    test(
+      'selectPrediction falls back to details.name when mainText is empty',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.getPlaceDetails('place-3')).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: 'Home Depot',
+            latitude: 37.75,
+            longitude: -122.45,
+            distanceMeters: 0,
+          ),
+        );
+
+        const prediction = AutocompletePrediction(
+          placeId: 'place-3',
+          description: 'Home Depot, Colma, CA',
+          mainText: '', // empty mainText
+        );
+
+        await viewModel.selectPrediction(prediction, service: service);
+
+        expect(viewModel.label, equals('Home Depot'));
+      },
+    );
+
+    test(
+      'selectPrediction returns null and clears suggestions when '
+      'getPlaceDetails fails',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.getPlaceDetails(any()))
+            .thenAnswer((_) async => null);
+
+        const prediction = AutocompletePrediction(
+          placeId: 'bad-id',
+          description: 'Unknown place',
+          mainText: 'Unknown place',
+        );
+
+        // Seed some suggestions to confirm they are cleared regardless.
+        viewModel.autocompleteSuggestions = [prediction];
+
+        final result = await viewModel.selectPrediction(
+          prediction,
+          service: service,
+        );
+
+        expect(result, isNull);
+        expect(viewModel.selectedLatLng, isNull);
+        expect(viewModel.autocompleteSuggestions, isEmpty);
+      },
+    );
+
+    test(
+      'selectPrediction notifies listeners on success',
+      () async {
+        final service = MockPlacesAutocompleteService();
+        when(() => service.getPlaceDetails(any())).thenAnswer(
+          (_) async => const PlaceSuggestion(
+            name: "Trader Joe's",
+            latitude: 37.76,
+            longitude: -122.42,
+            distanceMeters: 0,
+          ),
+        );
+
+        var notifyCount = 0;
+        viewModel.addListener(() => notifyCount++);
+
+        await viewModel.selectPrediction(
+          const AutocompletePrediction(
+            placeId: 'any-id',
+            description: "Trader Joe's, SF",
+            mainText: "Trader Joe's",
+          ),
+          service: service,
+        );
+
+        expect(notifyCount, greaterThan(0));
       },
     );
   });

@@ -5,7 +5,9 @@ import 'package:geofencing/geofencing.dart';
 import 'package:notifications/notifications.dart';
 import 'package:whileyoureout/geofence_event_handler.dart';
 import 'package:whileyoureout/geofence_manager.dart';
+import 'package:whileyoureout/services/google_places_autocomplete_service.dart';
 import 'package:whileyoureout/services/google_places_suggestion_service.dart';
+import 'package:whileyoureout/services/places_autocomplete_service.dart';
 import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -223,4 +225,12 @@ const String _googleMapsApiKey =
 final placesSuggestionServiceProvider =
     Provider<PlacesSuggestionService>((ref) {
   return const GooglePlacesSuggestionService(apiKey: _googleMapsApiKey);
+});
+
+/// Provides the [PlacesAutocompleteService] backed by Google Places.
+///
+/// Returns empty suggestions gracefully when the API key is not configured.
+final placesAutocompleteServiceProvider =
+    Provider<PlacesAutocompleteService>((ref) {
+  return const GooglePlacesAutocompleteService(apiKey: _googleMapsApiKey);
 });
