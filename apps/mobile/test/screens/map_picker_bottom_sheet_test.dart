@@ -146,8 +146,8 @@ void main() {
 
     testWidgets('is disabled when selectedLatLng is null', (tester) async {
       final listRepo = MockTodoListRepository();
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList());
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList()]));
 
       // selectedLatLng defaults to null in MapPickerViewModel.
       final vm = _SpyViewModel();
@@ -183,8 +183,8 @@ void main() {
         'is disabled and shows a CircularProgressIndicator when isSaving',
         (tester) async {
       final listRepo = MockTodoListRepository();
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList());
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList()]));
 
       final vm = _SpyViewModel()
         ..selectedLatLng = const LatLng(37, -122)
@@ -227,8 +227,8 @@ void main() {
     testWidgets('is enabled when selectedLatLng is set and isSaving is false',
         (tester) async {
       final listRepo = MockTodoListRepository();
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList());
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList()]));
 
       final vm = _SpyViewModel()..selectedLatLng = const LatLng(37, -122);
       addTearDown(vm.dispose);
@@ -260,8 +260,8 @@ void main() {
     testWidgets('tapping Save calls viewModel.saveLocation with the listId',
         (tester) async {
       final listRepo = MockTodoListRepository();
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList());
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList()]));
 
       final vm = _SpyViewModel()..selectedLatLng = const LatLng(37, -122);
       addTearDown(vm.dispose);
@@ -297,8 +297,8 @@ void main() {
     testWidgets("shows a 'Location saved' SnackBar after saving",
         (tester) async {
       final listRepo = MockTodoListRepository();
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList());
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList()]));
 
       final vm = _SpyViewModel()..selectedLatLng = const LatLng(37, -122);
       addTearDown(vm.dispose);
@@ -341,9 +341,9 @@ void main() {
 
     testWidgets('is absent when the list has no geofenceId', (tester) async {
       final listRepo = MockTodoListRepository();
-      // No geofenceId → FutureBuilder resolves to a list without a geofence.
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList());
+      // No geofenceId → StreamProvider emits a list without a geofence.
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList()]));
 
       final vm = _SpyViewModel();
       addTearDown(vm.dispose);
@@ -357,7 +357,7 @@ void main() {
           listRepo: listRepo,
         ),
       );
-      // pumpAndSettle resolves the FutureBuilder's async getListById call.
+      // pumpAndSettle lets the StreamProvider emit and the widget rebuild.
       await tester.pumpAndSettle();
 
       expect(
@@ -374,8 +374,8 @@ void main() {
 
     testWidgets('is present when the list has a geofenceId', (tester) async {
       final listRepo = MockTodoListRepository();
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList(geofenceId: 'geo-1'));
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList(geofenceId: 'geo-1')]));
 
       final vm = _SpyViewModel();
       addTearDown(vm.dispose);
@@ -406,8 +406,8 @@ void main() {
     testWidgets('tapping Remove calls viewModel.removeLocation',
         (tester) async {
       final listRepo = MockTodoListRepository();
-      when(() => listRepo.getListById(any()))
-          .thenAnswer((_) async => _makeList(geofenceId: 'geo-1'));
+      when(() => listRepo.watchAllLists())
+          .thenAnswer((_) => Stream.value([_makeList(geofenceId: 'geo-1')]));
 
       final vm = _SpyViewModel();
       addTearDown(vm.dispose);
@@ -421,7 +421,7 @@ void main() {
           listRepo: listRepo,
         ),
       );
-      // pumpAndSettle lets the FutureBuilder resolve so the button appears.
+      // pumpAndSettle lets the StreamProvider emit so the button appears.
       await tester.pumpAndSettle();
 
       await tester.tap(_removeButtonFinder);

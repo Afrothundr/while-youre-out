@@ -214,32 +214,33 @@ class MapPickerRemoveButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<TodoList?>(
-      future: ref.read(todoListRepositoryProvider).getListById(listId),
-      builder: (context, snapshot) {
-        final hasGeofence = snapshot.data?.geofenceId != null;
-        if (!hasGeofence) return const SizedBox.shrink();
+    // Use a StreamProvider instead of a one-shot Future so that the widget
+    // subscribes to the reactive list stream.  A FutureBuilder whose future
+    // is constructed inside build() creates a brand-new Future on every
+    // rebuild, which resets ConnectionState to waiting and briefly hides the
+    // button — a visible flicker whenever isSaving toggles.
+    final asyncList = ref.watch(listByIdProvider(listId));
+    final hasGeofence = asyncList.valueOrNull?.geofenceId != null;
+    if (!hasGeofence) return const SizedBox.shrink();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-              onPressed: viewModel.isSaving
-                  ? null
-                  : () => _onRemove(context, ref),
-              icon: const Icon(Icons.location_off_outlined),
-              label: const Text('Remove Location'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.error,
             ),
-          ],
-        );
-      },
+          ),
+          onPressed: viewModel.isSaving
+              ? null
+              : () => _onRemove(context, ref),
+          icon: const Icon(Icons.location_off_outlined),
+          label: const Text('Remove Location'),
+        ),
+      ],
     );
   }
 
