@@ -115,12 +115,17 @@ Widget _buildHarness({
             builder: (context, state) =>
                 ListDetailScreen(listId: state.pathParameters['listId']!),
             routes: [
-              GoRoute(
-                path: 'map',
-                builder: (context, state) =>
-                    const Scaffold(body: Text('Map Picker')),
-              ),
-            ],
+                GoRoute(
+                  path: 'location',
+                  builder: (context, state) =>
+                      const Scaffold(body: Text('Location Detail')),
+                ),
+                GoRoute(
+                  path: 'map',
+                  builder: (context, state) =>
+                      const Scaffold(body: Text('Map Picker')),
+                ),
+              ],
           ),
         ],
       ),
@@ -182,7 +187,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(AppEmptyState), findsOneWidget);
-      expect(find.text('No items yet'), findsOneWidget);
+      expect(find.text('Nothing here yet'), findsOneWidget);
       expect(find.text('Add your first item below.'), findsOneWidget);
     });
 
@@ -374,8 +379,8 @@ void main() {
       await tester.tap(find.byType(ActionChip));
       await tester.pumpAndSettle();
 
-      // After navigation the map picker stub screen should be visible.
-      expect(find.text('Map Picker'), findsOneWidget);
+      // After navigation the location detail stub screen should be visible.
+      expect(find.text('Location Detail'), findsOneWidget);
     });
 
     testWidgets('shows Add Location chip when list has no geofenceId',

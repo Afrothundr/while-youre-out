@@ -21,6 +21,22 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("While You're Out"),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            onSelected: (value) {
+              if (value == 'settings') {
+                context.push(AppRoutes.notificationSettings);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'settings',
+                child: Text('Notification settings'),
+              ),
+            ],
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         key: const Key('dashboard_fab'),
@@ -32,6 +48,14 @@ class DashboardScreen extends ConsumerWidget {
         state: dashState,
         onDelete: (id) => _confirmDelete(context, ref, viewModel, id),
         onTap: (id) => context.push(AppRoutes.listDetailPath(id)),
+        onReorder: (oldIndex, newIndex) {
+          // ReorderableListView calls onReorder with newIndex already adjusted
+          // for the removal; we just need to build the ordered ID list.
+          final lists = List<TodoList>.from(dashState.lists);
+          final item = lists.removeAt(oldIndex);
+          lists.insert(newIndex, item);
+          viewModel.reorderLists(lists.map((l) => l.id).toList());
+        },
       ),
     );
   }
@@ -80,11 +104,13 @@ class _DashboardBody extends ConsumerWidget {
     required this.state,
     required this.onDelete,
     required this.onTap,
+    required this.onReorder,
   });
 
   final DashboardState state;
   final void Function(String id) onDelete;
   final void Function(String id) onTap;
+  final void Function(int oldIndex, int newIndex) onReorder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -112,13 +138,16 @@ class _DashboardBody extends ConsumerWidget {
       );
     }
 
-    return ListView.separated(
+    return ReorderableListView.builder(
       itemCount: state.lists.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      onReorder: onReorder,
+      buildDefaultDragHandles: false,
       itemBuilder: (context, index) {
         final list = state.lists[index];
         return _ListTileWithBadge(
+          key: ValueKey(list.id),
           list: list,
+          index: index,
           onTap: () => onTap(list.id),
           onLongPress: () => onDelete(list.id),
         );
@@ -134,11 +163,14 @@ class _DashboardBody extends ConsumerWidget {
 class _ListTileWithBadge extends ConsumerWidget {
   const _ListTileWithBadge({
     required this.list,
+    required this.index,
     required this.onTap,
     required this.onLongPress,
+    super.key,
   });
 
   final TodoList list;
+  final int index;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -156,6 +188,10 @@ class _ListTileWithBadge extends ConsumerWidget {
         incompleteCount: incompleteCount,
         hasGeofence: list.geofenceId != null,
         onTap: onTap,
+        trailing: ReorderableDragStartListener(
+          index: index,
+          child: const Icon(Icons.drag_handle),
+        ),
       ),
     );
   }

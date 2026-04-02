@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:whileyoureout/screens/dashboard/dashboard_screen.dart';
 import 'package:whileyoureout/screens/list_detail/list_detail_screen.dart';
+import 'package:whileyoureout/screens/location_detail/location_detail_screen.dart';
 import 'package:whileyoureout/screens/map_picker/map_picker_screen.dart';
+import 'package:whileyoureout/screens/notification_settings/notification_settings_screen.dart';
 import 'package:whileyoureout/screens/onboarding/permissions_onboarding_screen.dart';
 
 /// Route path constants.
@@ -15,14 +17,23 @@ abstract final class AppRoutes {
   /// List detail route. Expects `:listId` path parameter.
   static const String listDetail = '/list/:listId';
 
+  /// Location detail route. Expects `:listId` path parameter.
+  static const String locationDetail = '/list/:listId/location';
+
   /// Map picker route. Expects `:listId` path parameter.
   static const String mapPicker = '/list/:listId/map';
+
+  /// Notification settings route.
+  static const String notificationSettings = '/settings/notifications';
 
   /// Permissions onboarding route.
   static const String onboarding = '/onboarding';
 
   /// Builds a concrete list detail path for navigation.
   static String listDetailPath(String listId) => '/list/$listId';
+
+  /// Builds a concrete location detail path for navigation.
+  static String locationDetailPath(String listId) => '/list/$listId/location';
 
   /// Builds a concrete map picker path for navigation.
   static String mapPickerPath(String listId) => '/list/$listId/map';
@@ -68,6 +79,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
         routes: [
           GoRoute(
+            path: 'location',
+            builder: (context, state) {
+              final listId = state.pathParameters['listId']!;
+              return LocationDetailScreen(listId: listId);
+            },
+          ),
+          GoRoute(
             path: 'map',
             builder: (context, state) {
               final listId = state.pathParameters['listId']!;
@@ -75,6 +93,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.notificationSettings,
+        builder: (context, state) => const NotificationSettingsScreen(),
       ),
       GoRoute(
         path: AppRoutes.onboarding,
