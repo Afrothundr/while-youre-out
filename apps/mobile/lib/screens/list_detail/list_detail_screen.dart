@@ -2,8 +2,10 @@ import 'package:domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:whileyoureout/router/app_router.dart';
+import 'package:whileyoureout/screens/list_detail/edit_list_bottom_sheet.dart';
 import 'package:whileyoureout/screens/list_detail/list_detail_view_model.dart';
 
 /// The detail screen for a single [TodoList].
@@ -48,6 +50,15 @@ class ListDetailScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+        actions: [
+          if (list != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit list',
+              onPressed: () =>
+                  EditListBottomSheet.show(context, list: list),
+            ),
+        ],
       ),
       body: _ListDetailBody(
         listId: listId,
@@ -81,11 +92,32 @@ class _ListDetailBodyState extends ConsumerState<_ListDetailBody> {
   final _addItemController = TextEditingController();
   final _addItemFocusNode = FocusNode();
 
+  /// Whether the background location permission is denied while a geofence
+  /// is attached. `null` means the check has not yet completed.
+  bool? _backgroundLocationDenied;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBackgroundLocationPermission();
+  }
+
   @override
   void dispose() {
     _addItemController.dispose();
     _addItemFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkBackgroundLocationPermission() async {
+    final status = await Permission.locationAlways.status;
+    if (!mounted) return;
+    setState(() {
+      _backgroundLocationDenied =
+          status == PermissionStatus.denied ||
+          status == PermissionStatus.limited ||
+          status == PermissionStatus.permanentlyDenied;
+    });
   }
 
   Future<void> _submitItem() async {
@@ -118,11 +150,37 @@ class _ListDetailBodyState extends ConsumerState<_ListDetailBody> {
     final list = state.list;
     final items = state.items;
 
+    final hasGeofence = list?.geofenceId != null;
+    final showBanner =
+        hasGeofence && (_backgroundLocationDenied ?? false);
+
     return Column(
       children: [
-        // Location chip — taps open the map picker.
+        // Background location denied banner — shown when a geofence is
+        // attached but the user has not granted "always" location access.
+        if (showBanner)
+          MaterialBanner(
+            content: const Text(
+              "Background location denied — arrival reminders won't work.",
+            ),
+            leading: const Icon(Icons.location_off_outlined),
+            actions: [
+              const TextButton(
+                onPressed: openAppSettings,
+                child: Text('Fix'),
+              ),
+              TextButton(
+                onPressed: () =>
+                    ScaffoldMessenger.of(context)
+                        .hideCurrentMaterialBanner(),
+                child: const Text('Dismiss'),
+              ),
+            ],
+          ),
+
+        // Location chip — taps open the Location Detail screen.
         if (list != null) ...[
-          if (list.geofenceId != null)
+          if (hasGeofence)
             _LocationChip(
               geofenceId: list.geofenceId!,
               listId: widget.listId,
@@ -135,8 +193,8 @@ class _ListDetailBodyState extends ConsumerState<_ListDetailBody> {
         Expanded(
           child: items.isEmpty
               ? const AppEmptyState(
-                  icon: Icons.checklist,
-                  headline: 'No items yet',
+                  icon: Icons.edit_note,
+                  headline: 'Nothing here yet',
                   body: 'Add your first item below.',
                 )
               : ListView.builder(
@@ -193,7 +251,7 @@ class _LocationChip extends StatelessWidget {
             maxLines: 1,
           ),
           onPressed: () =>
-              context.push(AppRoutes.mapPickerPath(listId)),
+              context.push(AppRoutes.locationDetailPath(listId)),
         ),
       ),
     );

@@ -16,6 +16,7 @@ class AppListTile extends StatelessWidget {
     this.incompleteCount = 0,
     this.hasGeofence = false,
     this.onTap,
+    this.trailing,
   });
 
   /// The list title displayed in the tile.
@@ -33,6 +34,10 @@ class AppListTile extends StatelessWidget {
   /// Called when the tile is tapped.
   final VoidCallback? onTap;
 
+  /// An optional widget appended after the badge/geofence icons in the
+  /// trailing slot. Intended for drag handles or other action controls.
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -48,6 +53,10 @@ class AppListTile extends StatelessWidget {
               child: Icon(Icons.location_on, size: 16),
             ),
           if (incompleteCount > 0) _Badge(count: incompleteCount),
+          if (trailing != null) ...[
+            const SizedBox(width: 4),
+            trailing!,
+          ],
         ],
       ),
     );

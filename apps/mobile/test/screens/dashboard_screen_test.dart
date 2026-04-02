@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:whileyoureout/providers/providers.dart';
 import 'package:whileyoureout/screens/dashboard/dashboard_screen.dart';
+import 'package:whileyoureout/screens/dashboard/dashboard_view_model.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -25,6 +26,27 @@ class MockCreateListUseCase extends Mock implements CreateListUseCase {}
 class MockDeleteListUseCase extends Mock implements DeleteListUseCase {}
 
 class MockReorderListsUseCase extends Mock implements ReorderListsUseCase {}
+
+// ---------------------------------------------------------------------------
+// Helpers — ProviderContainer for ViewModel-level tests
+// ---------------------------------------------------------------------------
+
+/// Builds a [ProviderContainer] wired up with a fake lists stream and the
+/// provided [reorderUseCase], then returns both the container and the notifier.
+///
+/// Callers are responsible for calling `container.dispose()` via
+/// [addTearDown].
+ProviderContainer _buildViewModelContainer({
+  required List<TodoList> lists,
+  required MockReorderListsUseCase reorderUseCase,
+}) {
+  return ProviderContainer(
+    overrides: [
+      allListsStreamProvider.overrideWith((ref) => Stream.value(lists)),
+      reorderListsUseCaseProvider.overrideWithValue(reorderUseCase),
+    ],
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -215,6 +237,100 @@ void main() {
       await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('shows a drag handle for each list tile', (tester) async {
+      final lists = [
+        _makeList(id: 'a'),
+        _makeList(id: 'b', title: 'Hardware store', sortOrder: 1),
+        _makeList(id: 'c', title: 'Pharmacy', sortOrder: 2),
+      ];
+
+      await tester.pumpWidget(
+        _buildHarness(listsStream: Stream.value(lists)),
+      );
+      await tester.pump();
+
+      // One drag handle per list tile.
+      expect(find.byIcon(Icons.drag_handle), findsNWidgets(lists.length));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // DashboardViewModel unit tests
+  // ---------------------------------------------------------------------------
+
+  group('DashboardViewModel.reorderLists', () {
+    test('calls ReorderListsUseCase with the correct ordered ID list',
+        () async {
+      final mockReorder = MockReorderListsUseCase();
+      when(() => mockReorder.call(any())).thenAnswer((_) async {});
+
+      final lists = [
+        _makeList(id: 'list-a'),
+        _makeList(id: 'list-b', sortOrder: 1),
+      ];
+
+      final container = _buildViewModelContainer(
+        lists: lists,
+        reorderUseCase: mockReorder,
+      );
+      addTearDown(container.dispose);
+
+      // Subscribe so the autoDispose notifier is kept alive for the test.
+      final subscription = container.listen(
+        dashboardViewModelProvider,
+        (_, __) {},
+      );
+      addTearDown(subscription.close);
+
+      // Allow the stream to emit so the notifier is fully initialised.
+      await Future<void>.delayed(Duration.zero);
+
+      final viewModel =
+          container.read(dashboardViewModelProvider.notifier);
+
+      await viewModel.reorderLists(['list-b', 'list-a']);
+
+      verify(() => mockReorder.call(['list-b', 'list-a'])).called(1);
+    });
+
+    test('does not change state on ReorderListsUseCase failure', () async {
+      final mockReorder = MockReorderListsUseCase();
+      when(() => mockReorder.call(any()))
+          .thenThrow(Exception('reorder failed'));
+
+      final lists = [
+        _makeList(id: 'list-a'),
+        _makeList(id: 'list-b', sortOrder: 1),
+      ];
+
+      final container = _buildViewModelContainer(
+        lists: lists,
+        reorderUseCase: mockReorder,
+      );
+      addTearDown(container.dispose);
+
+      // Subscribe so the autoDispose notifier is kept alive for the test.
+      final subscription = container.listen(
+        dashboardViewModelProvider,
+        (_, __) {},
+      );
+      addTearDown(subscription.close);
+
+      await Future<void>.delayed(Duration.zero);
+
+      final viewModel =
+          container.read(dashboardViewModelProvider.notifier);
+
+      // The call should not throw — errors are absorbed into state.
+      await expectLater(
+        () => viewModel.reorderLists(['list-b', 'list-a']),
+        returnsNormally,
+      );
+
+      final state = container.read(dashboardViewModelProvider);
+      expect(state.errorMessage, contains('reorder failed'));
     });
   });
 }
