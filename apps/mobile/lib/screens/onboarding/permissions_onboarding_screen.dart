@@ -25,15 +25,17 @@ void _defaultOnComplete(BuildContext context) => context.go('/');
 
 // ---------------------------------------------------------------------------
 
-/// A one-time onboarding screen that requests location permissions.
+/// A one-time onboarding screen that requests location and notification
+/// permissions.
 ///
 /// Shown on first launch if `onboarding_complete` is not set in
-/// [SharedPreferences]. Consists of two pages in a [PageView]:
+/// [SharedPreferences]. Consists of three pages in a [PageView]:
 ///
 /// 1. **When-in-use** — requests [Permission.locationWhenInUse].
 /// 2. **Always on** — requests [Permission.locationAlways].
+/// 3. **Notifications** — requests [Permission.notification].
 ///
-/// After step 2 (regardless of whether permissions were granted),
+/// After step 3 (regardless of whether permissions were granted),
 /// `onboarding_complete` is written to `true` and [onComplete] is called
 /// (defaults to `context.go('/')`).
 ///
@@ -74,6 +76,9 @@ class _PermissionsOnboardingScreenState
   /// Whether the user denied always-on permission on step 2.
   bool _alwaysDenied = false;
 
+  /// Whether the user denied notification permission on step 3.
+  bool _notificationDenied = false;
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -98,11 +103,40 @@ class _PermissionsOnboardingScreenState
 
   Future<void> _requestAlways() async {
     final status = await widget.requestPermission(Permission.locationAlways);
-    if (mounted) {
-      setState(() {
-        _alwaysDenied = status.isDenied || status.isPermanentlyDenied;
-      });
+    if (!mounted) return;
+    // If granted (or limited on iOS), advance to the notification step
+    // immediately without showing the denial warning.
+    if (!status.isDenied && !status.isPermanentlyDenied) {
+      await _advanceToNotifications();
+      return;
     }
+    setState(() {
+      _alwaysDenied = true;
+    });
+    // User will see the denied warning + "Continue" button which calls
+    // _advanceToNotifications via onDone.
+  }
+
+  /// Advances from step 2 to step 3 (notification permission).
+  Future<void> _advanceToNotifications() async {
+    await _pageController.animateToPage(
+      2,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  Future<void> _requestNotification() async {
+    final status = await widget.requestPermission(Permission.notification);
+    if (!mounted) return;
+    // If granted (or limited on iOS), finish onboarding immediately.
+    if (!status.isDenied && !status.isPermanentlyDenied) {
+      await _finish();
+      return;
+    }
+    setState(() {
+      _notificationDenied = true;
+    });
   }
 
   Future<void> _finish() async {
@@ -127,6 +161,13 @@ class _PermissionsOnboardingScreenState
             _AlwaysOnPage(
               denied: _alwaysDenied,
               onRequestAlways: _requestAlways,
+              // "Not now" / "Done" advances to the notification step instead
+              // of finishing outright.
+              onDone: _advanceToNotifications,
+            ),
+            _NotificationsPage(
+              denied: _notificationDenied,
+              onRequestNotifications: _requestNotification,
               onDone: _finish,
             ),
           ],
@@ -221,6 +262,11 @@ class _AlwaysOnPage extends StatelessWidget {
 
   final bool denied;
   final VoidCallback onRequestAlways;
+
+  /// Called when the user skips or acknowledges this step.
+  ///
+  /// Navigates to the next onboarding page (notifications) rather than
+  /// finishing onboarding.
   final VoidCallback onDone;
 
   @override
@@ -302,6 +348,101 @@ class _AlwaysOnPage extends StatelessWidget {
               child: FilledButton(
                 onPressed: onRequestAlways,
                 child: const Text('Allow Background Location'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: onDone,
+                child: const Text('Not now'),
+              ),
+            ),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onDone,
+                child: const Text('Continue'),
+              ),
+            ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Step 3 — Notifications
+// ---------------------------------------------------------------------------
+
+class _NotificationsPage extends StatelessWidget {
+  const _NotificationsPage({
+    required this.denied,
+    required this.onRequestNotifications,
+    required this.onDone,
+  });
+
+  final bool denied;
+  final VoidCallback onRequestNotifications;
+
+  /// Called when the user skips or acknowledges the denial — finishes
+  /// onboarding.
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Spacer(),
+          Icon(
+            Icons.notifications_outlined,
+            size: 80,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Stay in the loop',
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "We'll notify you when you arrive at a saved location so you "
+            "don't forget a thing.",
+            style: theme.textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
+          if (denied) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Notifications are disabled. You can enable them later in '
+                'your device Settings.',
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+          const Spacer(),
+          if (!denied) ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onRequestNotifications,
+                child: const Text('Allow Notifications'),
               ),
             ),
             const SizedBox(height: 12),
