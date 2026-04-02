@@ -45,8 +45,10 @@ scripts:
       dirExists: test
 
   test:domain:
-    exec: flutter test --coverage
-    description: Run tests for the domain package only.
+    # domain is a pure-Dart package — flutter test does not work here.
+    # dart test --coverage=coverage writes raw JSON; format_coverage converts to lcov.
+    exec: dart test --coverage=coverage && dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
+    description: Run tests for the domain package only (pure-Dart; uses dart test + format_coverage).
     packageFilters:
       scope: "domain"
 
@@ -65,13 +67,15 @@ scripts:
   # ── Coverage ────────────────────────────────────────────────────────────────
 
   coverage:combine:
+    # Ensure the coverage tool is available globally before formatting.
     run: |
+      dart pub global activate coverage
       dart pub global run coverage:format_coverage \
         --lcov \
         --in=coverage \
         --out=coverage/lcov.info \
         --report-on=lib
-    description: Combine lcov reports from all packages.
+    description: Combine lcov reports from all packages (activates coverage tool if not already present).
 
   # ── Build ───────────────────────────────────────────────────────────────────
 
