@@ -13,9 +13,11 @@ import 'package:whileyoureout/screens/onboarding/permissions_onboarding_screen.d
 ///
 /// [requestPermission] is injected so tests can control what the permission
 /// dialogs return without hitting platform channels.
+/// [checkPermissionStatus] is injected to control pre-request status checks.
 /// [onCompleteCalled] is set to true when the screen finishes onboarding.
 Widget _buildHarness({
   RequestPermissionCallback? requestPermission,
+  CheckPermissionStatusCallback? checkPermissionStatus,
   ValueNotifier<bool>? onCompleteCalled,
 }) {
   final router = GoRouter(
@@ -26,6 +28,8 @@ Widget _buildHarness({
         builder: (_, __) => PermissionsOnboardingScreen(
           requestPermission:
               requestPermission ?? (_) async => PermissionStatus.denied,
+          checkPermissionStatus:
+              checkPermissionStatus ?? (_) async => PermissionStatus.denied,
           onComplete: (context) {
             onCompleteCalled?.value = true;
           },
@@ -53,6 +57,18 @@ RequestPermissionCallback _makePermissionCallback({
     if (permission == Permission.locationWhenInUse) return whenInUse;
     if (permission == Permission.locationAlways) return always;
     if (permission == Permission.notification) return notification;
+    return PermissionStatus.denied;
+  };
+}
+
+/// Returns a [CheckPermissionStatusCallback] that maps specific [Permission]s
+/// to the supplied [PermissionStatus] values without triggering a system
+/// prompt. Any unmapped permission returns [PermissionStatus.denied].
+CheckPermissionStatusCallback _makeCheckStatusCallback({
+  PermissionStatus whenInUse = PermissionStatus.denied,
+}) {
+  return (permission) async {
+    if (permission == Permission.locationWhenInUse) return whenInUse;
     return PermissionStatus.denied;
   };
 }
@@ -124,6 +140,58 @@ void main() {
         find.text('You can set locations manually by tapping the map.'),
         findsNothing,
       );
+    });
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Permanently-denied location
+    // -----------------------------------------------------------------------
+
+    testWidgets(
+        'step 1: permanently-denied location shows AlertDialog when Continue tapped',
+        (tester) async {
+      await tester.pumpWidget(
+        _buildHarness(
+          checkPermissionStatus: _makeCheckStatusCallback(
+            whenInUse: PermissionStatus.permanentlyDenied,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Location permission required'), findsOneWidget);
+      expect(
+        find.text('Please enable location access in your device Settings.'),
+        findsOneWidget,
+      );
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Open Settings'), findsOneWidget);
+    });
+
+    testWidgets(
+        'step 1: permanently-denied Cancel dismisses dialog and stays on step 1',
+        (tester) async {
+      await tester.pumpWidget(
+        _buildHarness(
+          checkPermissionStatus: _makeCheckStatusCallback(
+            whenInUse: PermissionStatus.permanentlyDenied,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      // Dismiss the dialog via Cancel.
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Should still be on step 1 — NOT advanced to step 2.
+      expect(find.text('Show your location on the map'), findsOneWidget);
+      expect(find.text('Get notified when you arrive'), findsNothing);
     });
 
     testWidgets('tapping Continue on step 1 advances to step 2',

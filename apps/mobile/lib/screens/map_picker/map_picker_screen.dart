@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:whileyoureout/providers/providers.dart';
 import 'package:whileyoureout/screens/map_picker/map_picker_bottom_sheet.dart';
 import 'package:whileyoureout/screens/map_picker/map_picker_view_model.dart';
@@ -89,11 +90,18 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
       if (!serviceEnabled) return;
 
       var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) _showPermanentlyDeniedDialog();
+        return;
+      }
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.deniedForever) {
+          if (mounted) _showPermanentlyDeniedDialog();
+          return;
+        }
       }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied) {
         return;
       }
 
@@ -137,6 +145,33 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
     } catch (_) {
       // Auto-suggest is best-effort; never crash _initMap over it.
     }
+  }
+
+  /// Shows a dialog explaining that location access is permanently denied and
+  /// offering to open the app's system settings page.
+  void _showPermanentlyDeniedDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Location permission required'),
+        content: const Text(
+          'Please enable location access in your device Settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              openAppSettings();
+              Navigator.pop(context);
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _moveTo(LatLng latLng) {

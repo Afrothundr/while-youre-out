@@ -9,6 +9,12 @@ typedef RequestPermissionCallback = Future<PermissionStatus> Function(
   Permission permission,
 );
 
+/// Signature for a function that checks the current status of a [Permission]
+/// without triggering a system prompt.
+typedef CheckPermissionStatusCallback = Future<PermissionStatus> Function(
+  Permission permission,
+);
+
 /// Signature for the navigation callback used when onboarding completes.
 typedef OnOnboardingCompleteCallback = void Function(BuildContext context);
 
@@ -18,6 +24,13 @@ Future<PermissionStatus> _defaultRequestPermission(
   Permission permission,
 ) =>
     permission.request();
+
+/// Default implementation of [CheckPermissionStatusCallback] that reads the
+/// current permission status via the real permission_handler platform channel.
+Future<PermissionStatus> _defaultCheckPermissionStatus(
+  Permission permission,
+) =>
+    permission.status;
 
 /// Default implementation of [OnOnboardingCompleteCallback] that navigates to
 /// the dashboard using GoRouter.
@@ -46,14 +59,23 @@ class PermissionsOnboardingScreen extends StatefulWidget {
   const PermissionsOnboardingScreen({
     super.key,
     RequestPermissionCallback? requestPermission,
+    CheckPermissionStatusCallback? checkPermissionStatus,
     OnOnboardingCompleteCallback? onComplete,
   })  : requestPermission = requestPermission ?? _defaultRequestPermission,
+        checkPermissionStatus =
+            checkPermissionStatus ?? _defaultCheckPermissionStatus,
         onComplete = onComplete ?? _defaultOnComplete;
 
   /// Callback used to request a platform permission.
   ///
   /// Injectable for testing. Defaults to the real permission_handler call.
   final RequestPermissionCallback requestPermission;
+
+  /// Callback used to check the current status of a platform permission
+  /// without triggering a system prompt.
+  ///
+  /// Injectable for testing. Defaults to the real permission_handler call.
+  final CheckPermissionStatusCallback checkPermissionStatus;
 
   /// Called once onboarding is finished (SharedPreferences flag is already
   /// set before this fires).
@@ -85,7 +107,42 @@ class _PermissionsOnboardingScreenState
     super.dispose();
   }
 
+  /// Shows a dialog explaining that location access is permanently denied and
+  /// offering to open the app's system settings page.
+  void _showPermanentlyDeniedDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Location permission required'),
+        content: const Text(
+          'Please enable location access in your device Settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              openAppSettings();
+              Navigator.pop(context);
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _requestWhenInUse() async {
+    // If permanently denied, show the settings dialog and stay on step 1.
+    final currentStatus =
+        await widget.checkPermissionStatus(Permission.locationWhenInUse);
+    if (currentStatus.isPermanentlyDenied) {
+      if (mounted) _showPermanentlyDeniedDialog();
+      return;
+    }
+
     final status =
         await widget.requestPermission(Permission.locationWhenInUse);
     if (mounted) {
