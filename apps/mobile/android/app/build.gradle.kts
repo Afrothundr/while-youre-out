@@ -42,11 +42,31 @@ android {
                 ?: ""
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("whileyoureout.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Use release signing when the keystore is present (CI) and env vars are set.
+            // Falls back to debug keys for local `flutter run --release` without a keystore.
+            val keystorePresent = file("whileyoureout.jks").exists()
+                    && System.getenv("KEYSTORE_PASSWORD") != null
+            signingConfig = if (keystorePresent) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
