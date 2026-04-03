@@ -20,7 +20,12 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("While You're Out"),
+        title: Text(
+          "While You're Out",
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         actions: [
           PopupMenuButton<String>(
             tooltip: 'More options',
@@ -38,11 +43,11 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         key: const Key('dashboard_fab'),
         onPressed: () => CreateListBottomSheet.show(context),
-        tooltip: 'Create list',
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New List'),
       ),
       body: _DashboardBody(
         state: dashState,
@@ -142,6 +147,7 @@ class _DashboardBody extends ConsumerWidget {
       itemCount: state.lists.length,
       onReorder: onReorder,
       buildDefaultDragHandles: false,
+      padding: const EdgeInsets.only(top: 8, bottom: 88),
       itemBuilder: (context, index) {
         final list = state.lists[index];
         return _ListTileWithBadge(

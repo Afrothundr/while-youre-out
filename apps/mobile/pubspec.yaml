@@ -30,10 +30,21 @@ dependencies:
     path: ../../packages/ui_kit
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.1
   flutter_test:
     sdk: flutter
   mocktail: ^1.0.0
   very_good_analysis: ^5.1.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "web/icons/New-Icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "web/icons/New-Icon.png"
+  web:
+    generate: true
+    image_path: "web/icons/New-Icon.png"
 
 flutter:
   uses-material-design: true

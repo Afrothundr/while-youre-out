@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:ui_kit/src/theme/text_styles.dart';
 
-/// A styled list tile representing a todo list.
+/// A styled card tile representing a todo list.
 ///
-/// Displays a colored circle on the leading edge, the list [title], an
-/// optional trailing badge showing the number of incomplete items, and an
-/// optional location-pin icon when a geofence is attached.
+/// Displays a vertical color-accent bar on the leading edge, the list
+/// [title], an optional trailing badge showing the number of incomplete
+/// items, and an optional location-pin icon when a geofence is attached.
 class AppListTile extends StatelessWidget {
   /// Creates an [AppListTile].
   const AppListTile({
@@ -22,7 +22,7 @@ class AppListTile extends StatelessWidget {
   /// The list title displayed in the tile.
   final String title;
 
-  /// The ARGB integer color used for the leading color dot.
+  /// The ARGB integer color used for the leading color bar.
   final int color;
 
   /// Number of incomplete items. Badge is hidden when this is 0.
@@ -40,43 +40,65 @@ class AppListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: _ColorDot(color: color),
-      title: Text(title, style: AppTextStyles.listTitle),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (hasGeofence)
-            const Padding(
-              padding: EdgeInsets.only(right: 4),
-              child: Icon(Icons.location_on, size: 16),
-            ),
-          if (incompleteCount > 0) _Badge(count: incompleteCount),
-          if (trailing != null) ...[
-            const SizedBox(width: 4),
-            trailing!,
-          ],
-        ],
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+          child: Row(
+            children: [
+              _ColorBar(color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.listTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasGeofence)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  if (incompleteCount > 0) _Badge(count: incompleteCount),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 4),
+                    trailing!,
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-/// A 12 px filled circle rendered in [color].
-class _ColorDot extends StatelessWidget {
-  const _ColorDot({required this.color});
+/// A 4 px wide × 40 px tall rounded rectangle rendered in [color].
+class _ColorBar extends StatelessWidget {
+  const _ColorBar({required this.color});
 
   final int color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 12,
-      height: 12,
+      width: 4,
+      height: 40,
       decoration: BoxDecoration(
         color: Color(color),
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(2),
       ),
     );
   }

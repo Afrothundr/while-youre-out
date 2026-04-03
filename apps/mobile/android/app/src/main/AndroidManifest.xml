@@ -7,7 +7,7 @@
     <!-- Required on Android 13+ (API 33+) to post local notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="whileyoureout"
+        android:label="While You're Out"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
     >
