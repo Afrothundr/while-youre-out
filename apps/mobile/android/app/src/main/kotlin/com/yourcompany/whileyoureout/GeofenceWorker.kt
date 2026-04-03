@@ -201,7 +201,7 @@ class GeofenceWorker(
         }
 
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(listTitle)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

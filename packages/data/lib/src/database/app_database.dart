@@ -16,7 +16,8 @@ part 'app_database.g.dart';
 )
 class AppDatabase extends _$AppDatabase {
   /// Creates the production database backed by a file on disk.
-  AppDatabase() : super(_openConnection());
+  AppDatabase({Future<void> Function(String path)? onFileReady})
+      : super(_openConnection(onFileReady: onFileReady));
 
   /// Creates an in-memory database suitable for unit tests.
   ///
@@ -51,14 +52,18 @@ class AppDatabase extends _$AppDatabase {
 }
 
 /// Opens a lazy, file-backed [DatabaseConnection] for production use.
-LazyDatabase _openConnection() {
+///
+/// The optional [onFileReady] callback is called with the resolved database
+/// file path immediately before the connection is opened. The app shell uses
+/// this to exclude the file from iCloud backup (iOS only).
+LazyDatabase _openConnection({
+  Future<void> Function(String path)? onFileReady,
+}) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'while_youre_out.db'));
 
-    // TODO(phase-2-ios): Exclude the DB file from iCloud backup by calling a
-    // platform channel that sets NSURLIsExcludedFromBackupKey on the file URL.
-    // This is best done from apps/mobile once native iOS code is touched there.
+    await onFileReady?.call(file.path);
 
     return NativeDatabase.createInBackground(file);
   });

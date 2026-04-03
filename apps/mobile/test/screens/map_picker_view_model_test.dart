@@ -1059,4 +1059,17 @@ void main() {
       },
     );
   });
+
+  group('overlay visibility state', () {
+    test('selectedLatLng is null initially (overlay should be shown)', () {
+      final vm = MapPickerViewModel();
+      expect(vm.selectedLatLng, isNull);
+    });
+
+    test('selectedLatLng is non-null after selectLocation (overlay should hide)', () {
+      final vm = MapPickerViewModel();
+      vm.selectLocation(const LatLng(37.7749, -122.4194));
+      expect(vm.selectedLatLng, isNotNull);
+    });
+  });
 }

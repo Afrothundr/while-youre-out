@@ -5,6 +5,7 @@ import 'package:geofencing/geofencing.dart';
 import 'package:notifications/notifications.dart';
 import 'package:whileyoureout/geofence_event_handler.dart';
 import 'package:whileyoureout/geofence_manager.dart';
+import 'package:whileyoureout/services/backup_exclusion_service.dart';
 import 'package:whileyoureout/services/google_places_autocomplete_service.dart';
 import 'package:whileyoureout/services/google_places_suggestion_service.dart';
 import 'package:whileyoureout/services/places_autocomplete_service.dart';
@@ -16,7 +17,9 @@ import 'package:whileyoureout/services/places_suggestion_service.dart';
 
 /// The single [AppDatabase] instance for the app lifetime.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase();
+  final db = AppDatabase(
+    onFileReady: const BackupExclusionService().excludeFromBackup,
+  );
   ref.onDispose(db.close);
   return db;
 });

@@ -82,7 +82,7 @@ scripts:
   build:ios:
     run: |
       cd apps/mobile && \
-      flutter build ipa --no-codesign \
+      flutter build ipa --no-codesign --scheme whileyoureout \
         --dart-define=GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
     description: Build iOS archive (no code signing — for CI validation).
 

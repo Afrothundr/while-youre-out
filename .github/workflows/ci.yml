@@ -142,12 +142,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all coverage artifacts
+      - name: Download domain coverage
         uses: actions/download-artifact@v4
         with:
-          pattern: coverage-*
-          merge-multiple: true
-          path: coverage
+          name: coverage-domain
+          path: coverage/domain
+
+      - name: Download data coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data
+          path: coverage/data
+
+      - name: Download geofencing coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-geofencing
+          path: coverage/geofencing
 
       - name: Install lcov
         run: sudo apt-get install -y lcov
@@ -155,7 +166,9 @@ jobs:
       - name: Merge lcov reports
         run: |
           lcov \
-            --add-tracefile coverage/lcov.info \
+            --add-tracefile coverage/domain/lcov.info \
+            --add-tracefile coverage/data/lcov.info \
+            --add-tracefile coverage/geofencing/lcov.info \
             --output-file coverage/merged.info
 
       - name: Upload to Codecov
