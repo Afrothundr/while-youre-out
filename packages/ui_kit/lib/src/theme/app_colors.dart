@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 abstract final class AppColors {
   /// Eight ARGB color values users can pick for a list's accent color.
   static const List<int> listColors = <int>[
-    0xFF2196F3, // blue (default)
+    0xFF0099D9, // sky blue (default)
     0xFF4CAF50, // green
     0xFFFF9800, // orange
     0xFFE91E63, // pink
