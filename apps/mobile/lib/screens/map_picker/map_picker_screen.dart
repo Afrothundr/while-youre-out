@@ -264,6 +264,52 @@ class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
             ),
 
           // ----------------------------------------------------------------
+          // No-pin hint overlay — hidden once a pin is placed
+          // ----------------------------------------------------------------
+          if (viewModel.selectedLatLng == null)
+            Center(
+              child: IgnorePointer(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 64,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Column(
+                        children: [
+                          Text(
+                            'Tap the map',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Drop a pin to set your reminder location',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ----------------------------------------------------------------
           // Bottom sheet
           // ----------------------------------------------------------------
           MapPickerBottomSheet(

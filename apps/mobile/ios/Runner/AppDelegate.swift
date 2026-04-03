@@ -16,6 +16,9 @@ import GoogleMaps
     if let registrar = self.registrar(forPlugin: "GeofencingHandler") {
       GeofencingHandler.register(with: registrar)
     }
+    if let registrar = self.registrar(forPlugin: "BackupExclusionHandler") {
+      BackupExclusionHandler.register(with: registrar)
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

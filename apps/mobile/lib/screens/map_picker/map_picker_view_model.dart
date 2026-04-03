@@ -25,6 +25,12 @@ class MapPickerViewModel extends ChangeNotifier {
   /// Human-readable label for the location.
   String label = '';
 
+  /// Whether the current [label] was written by [tryAutoFillLabel] (as opposed
+  /// to being typed by the user). When `true`, [tryAutoFillLabel] is allowed
+  /// to overwrite the label with a fresher reverse-geocode result so that
+  /// moving the pin to a new location updates the label automatically.
+  bool _isLabelAutoFilled = false;
+
   /// Whether an async save / remove operation is in progress.
   bool isSaving = false;
 
@@ -64,8 +70,12 @@ class MapPickerViewModel extends ChangeNotifier {
   }
 
   /// Updates the label to [value] and notifies listeners.
+  ///
+  /// Marks the label as user-typed so that [tryAutoFillLabel] will no longer
+  /// overwrite it when the pin is moved.
   void updateLabel(String value) {
     label = value;
+    _isLabelAutoFilled = false;
     notifyListeners();
   }
 
@@ -127,11 +137,15 @@ class MapPickerViewModel extends ChangeNotifier {
     required double lng,
     required PlacesAutocompleteService service,
   }) async {
-    if (label.isNotEmpty) return;
+    // Allow overwrite when the label is empty OR it was previously auto-filled
+    // (meaning the user has not yet typed anything manually). This ensures
+    // that moving the pin to a new location refreshes the label.
+    if (label.isNotEmpty && !_isLabelAutoFilled) return;
 
     final placeName = await service.reverseGeocode(lat, lng);
-    if (placeName != null && placeName.isNotEmpty && label.isEmpty) {
+    if (placeName != null && placeName.isNotEmpty) {
       label = placeName;
+      _isLabelAutoFilled = true;
       notifyListeners();
     }
   }
