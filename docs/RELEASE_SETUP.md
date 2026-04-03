@@ -88,7 +88,7 @@ The CI workflow expects the IPA at:
 apps/mobile/build/ios/ipa/whileyoureout.ipa
 ```
 
-Flutter names the IPA after the Xcode scheme. If the build produces `Runner.ipa` instead, update the `app-path` in `.github/workflows/release.yml` accordingly, or rename the Xcode scheme to `whileyoureout` in Xcode under **Product → Scheme → Manage Schemes**.
+Flutter names the IPA after the Xcode scheme. The Xcode scheme has already been renamed to `whileyoureout` (see `apps/mobile/ios/Runner.xcodeproj/xcshareddata/xcschemes/whileyoureout.xcscheme`), so `flutter build ipa` will produce `whileyoureout.ipa` matching the path expected by the release workflow.
 
 ---
 
