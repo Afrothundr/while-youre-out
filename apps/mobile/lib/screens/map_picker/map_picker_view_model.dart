@@ -200,6 +200,9 @@ class MapPickerViewModel extends ChangeNotifier {
   /// - Sets [selectedLatLng] to the place's coordinates.
   /// - Sets [label] to [AutocompletePrediction.mainText] (or the place name
   ///   returned by the details API if mainText is empty).
+  /// - Resets `_isLabelAutoFilled` to `false` so that a subsequent
+  ///   [tryAutoFillLabel] call (triggered by the user moving the pin) does
+  ///   not overwrite the user-chosen autocomplete label.
   /// - Clears [autocompleteSuggestions].
   ///
   /// Returns the [LatLng] of the selected place so the caller (screen) can
@@ -215,6 +218,7 @@ class MapPickerViewModel extends ChangeNotifier {
       label = prediction.mainText.isNotEmpty
           ? prediction.mainText
           : details.name;
+      _isLabelAutoFilled = false;
     }
 
     autocompleteSuggestions = [];
