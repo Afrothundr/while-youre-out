@@ -61,6 +61,7 @@
 {"created_at":"2026-04-01T10:38:45Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-t77","issue_id":"while-youre-out-t77.3","type":"parent-child"}
 {"created_at":"2026-04-01T10:39:51Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-t77.2","issue_id":"while-youre-out-t77.3","type":"blocks"}
 {"created_at":"2026-04-02T17:27:18Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-946","issue_id":"while-youre-out-uwi","type":"discovered-from"}
+{"created_at":"2026-04-03T16:10:26Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-89o","issue_id":"while-youre-out-uyo","type":"discovered-from"}
 {"created_at":"2026-03-30T15:59:40Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-1pq","issue_id":"while-youre-out-v3r","type":"epic"}
 {"created_at":"2026-03-30T15:59:40Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-7mq","issue_id":"while-youre-out-v3r","type":"blocks"}
 {"created_at":"2026-04-03T15:51:32Z","created_by":"Branford Harris","depends_on_id":"while-youre-out-efo","issue_id":"while-youre-out-ymw","type":"discovered-from"}
